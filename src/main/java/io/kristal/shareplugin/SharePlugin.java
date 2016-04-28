@@ -25,7 +25,7 @@
  * THE SOFTWARE.
  */
 
-package io.kristal.shareme;
+package io.kristal.shareplugin;
 
 import android.content.ContentResolver;
 import android.content.Context;

@@ -1,10 +1,6 @@
-package io.kristal.shareme;
+package io.kristal.shareplugin;
 
 import android.content.Intent;
-import android.net.Uri;
-import android.os.Environment;
-
-import java.io.File;
 
 /**
  * Created by Roxane P. on 4/18/16.

@@ -1,4 +1,4 @@
-package io.kristal.shareme;
+package io.kristal.shareplugin;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;

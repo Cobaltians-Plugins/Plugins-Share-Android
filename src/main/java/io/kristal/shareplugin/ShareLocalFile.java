@@ -1,4 +1,4 @@
-package io.kristal.shareme;
+package io.kristal.shareplugin;
 
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
