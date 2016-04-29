@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
+import android.util.TypedValue;
 
 import org.cobaltians.cobalt.Cobalt;
 
@@ -14,16 +15,16 @@ import io.kristal.shareplugin.SharePlugin;
 
 /**
  * Created by Roxane P. on 4/22/16.
- * share from drawable
+ * share from assets
  */
 public class ShareLocalFile implements ShareDataInterface {
 
     private static final String TAG = "ShareLocalFile";
     private final String type;
-    private int resourceId;
-    private String path;
-    private String title;
-    private String detail;
+    private int resourceId = -1;
+    private String path = null;
+    private String title = null;
+    private String detail = null;
 
     /**
      * ShareLocalFile constructor
@@ -54,38 +55,40 @@ public class ShareLocalFile implements ShareDataInterface {
     public Intent returnShareIntent() {
         Uri uri;
         Intent share;
-        switch (type) {
-            case SharePlugin.TYPE_IMAGE_KEY:
-                // image comes from R.drawable
-                share = new Intent(Intent.ACTION_SEND);
-                // get bitmap image from drawable
-                Drawable bitmap = SharePlugin.currentFragment.getContext().getResources().getDrawable(resourceId);
-                if (Cobalt.DEBUG) {
-                    Log.d(TAG, "Found image view " + SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId) + " drawable to string " + bitmap.toString());
-                }
-                // generate uri
-                uri = SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId);
-                // place file type
-                share.setType("image/*");
-                // place extras
-                share.putExtra(Intent.EXTRA_SUBJECT, title);
-                share.putExtra(Intent.EXTRA_TEXT, detail);
-                //share.putExtra(Intent.EXTRA_STREAM, Uri.parse(path));
-                share.putExtra(Intent.EXTRA_STREAM, uri);
-                // return intent for launching
-                return share;
-            case SharePlugin.TYPE_AUDIO_KEY:
-                return null; // TODO: 4/22/16 audio from drawable
-            case SharePlugin.TYPE_DOCUMENT_KEY:
-                return null; // TODO: 4/22/16 document file (pdf, docx, xml) from drawable
-            case SharePlugin.TYPE_VIDEO_KEY:
-                return null; // TODO: 4/22/16 video file from drawable
-            case SharePlugin.TYPE_DATA_KEY:
-                return null; // TODO: 4/22/16 other data from drawable
-            default:
-                break;
+        if (this.resourceId > 0) {
+            // file comes from drawable id
+            share = new Intent(Intent.ACTION_SEND);
+            // generate uri
+            uri = SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId);
+            if (Cobalt.DEBUG) {
+                Log.d(TAG, "Found image view " + SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId));
+            }
+            // TODO: 4/29/16 bug: file from resources id does not have extensions
+            // set MimeType from resource, we need to use TypedValue to get the extension
+            TypedValue value = new TypedValue();
+            SharePlugin.currentFragment.getContext().getResources().getValue(resourceId, value, true);
+            share.setType(SharePlugin.getMimeType(value.string.toString()));
+            // place extras
+            share.putExtra(Intent.EXTRA_SUBJECT, title);
+            share.putExtra(Intent.EXTRA_TEXT, detail);
+            //share.putExtra(Intent.EXTRA_STREAM, Uri.parse(path));
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            // return intent for launching
+            return share;
+        } else if (path != null) {
+            // file comes from assets
+            uri = Uri.parse(SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path);
+            Log.v(TAG, "uri " + SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path);
+            share = new Intent(Intent.ACTION_SEND);
+            // set MimeType
+            share.setType(SharePlugin.getMimeType(path));
+            // place extras
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            share.putExtra(android.content.Intent.EXTRA_SUBJECT, (title == null ? "Subject for message" : title));
+            share.putExtra(android.content.Intent.EXTRA_TEXT, (detail == null ? "Body for message" : title));
+            // return intent for launching
+            return share;
         }
-
         return null;
     }
 }

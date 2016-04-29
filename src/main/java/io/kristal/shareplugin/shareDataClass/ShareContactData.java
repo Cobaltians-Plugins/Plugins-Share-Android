@@ -39,6 +39,9 @@ public class ShareContactData implements ShareDataInterface {
         if (data.containsKey("detail")) this.email = data.get("detail").toString();
     }
 
+    /**
+     * return a ready-to-launch intent for a contact
+     */
     public Intent returnShareIntent() {
         Intent intent = new Intent(Intent.ACTION_INSERT);
         // Sets the MIME type

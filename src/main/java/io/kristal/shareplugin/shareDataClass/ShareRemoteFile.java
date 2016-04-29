@@ -106,7 +106,6 @@ public class ShareRemoteFile implements ShareDataInterface {
                 share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(downloadFileFromUrl()));
                 return share;
             case SharePlugin.TYPE_DOCUMENT_KEY:
-                // TODO: 4/22/16 document file (pdf, docx, xml) from url
                 share = new Intent(Intent.ACTION_SEND);
                 // set MimeType [application/*]
                 share.setType(SharePlugin.getMimeType(rawUrl));
@@ -114,9 +113,9 @@ public class ShareRemoteFile implements ShareDataInterface {
                 share.putExtra(Intent.EXTRA_SUBJECT, mTitle);
                 share.putExtra(Intent.EXTRA_TEXT, mDetail);
                 share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(downloadFileFromUrl()));
+                // return intent for launching
                 return share;
             case SharePlugin.TYPE_VIDEO_KEY:
-                // TODO: 4/22/16 video file from url
                 share = new Intent(Intent.ACTION_SEND);
                 // set MimeType [video/*]
                 share.setType(SharePlugin.getMimeType(rawUrl));
@@ -148,7 +147,8 @@ public class ShareRemoteFile implements ShareDataInterface {
      */
     private File downloadFileFromUrl() {
         File file = null;
-        String fileName = this.mTitle + '.' + (MimeTypeMap.getFileExtensionFromUrl(rawUrl) == null ? "dat" : MimeTypeMap.getFileExtensionFromUrl(rawUrl));
+        String fileName = SharePlugin.fileNameForFileSystem(this.mTitle + '.' +
+                (MimeTypeMap.getFileExtensionFromUrl(rawUrl) == null ? "dat" : MimeTypeMap.getFileExtensionFromUrl(rawUrl)));
         // Variable to store total downloaded bytes
         int downloadedSize = 0;
         Boolean startToastShowed = false;
@@ -161,12 +161,12 @@ public class ShareRemoteFile implements ShareDataInterface {
             urlConnection.setDoOutput(true);
             urlConnection.connect();
             // Set the path where we want to save the file
-            // In this case, going to save it on the root directory of the sd card. + Environment.getExternalStorageDirectory().getAbsolutePath() +
-            File SDCardRoot = new File(SharePlugin.pathRemoteFile);
+            // In this case, going to save it on the root directory of the sd card.
+            File SDCardRoot = new File(SharePlugin.pathFileStorage);
             if (Cobalt.DEBUG) Log.d(TAG, "File will be stored in " + SDCardRoot.getAbsolutePath());
             // Create a new file, specifying the path, and the filename
             // Which we want to save the file as.
-            file = new File(SDCardRoot, SharePlugin.fileNameForFileSystem(fileName));
+            file = new File(SDCardRoot, fileName);
             // Stream for writing the downloaded data into the created file
             FileOutputStream fileOutput = new FileOutputStream(file);
             // Stream for reading the data from the internet
