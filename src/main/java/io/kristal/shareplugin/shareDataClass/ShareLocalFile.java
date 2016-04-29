@@ -1,4 +1,4 @@
-package io.kristal.shareplugin;
+package io.kristal.shareplugin.shareDataClass;
 
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
@@ -7,6 +7,11 @@ import android.util.Log;
 
 import org.cobaltians.cobalt.Cobalt;
 
+import java.util.Map;
+
+import io.kristal.shareplugin.interfaces.ShareDataInterface;
+import io.kristal.shareplugin.SharePlugin;
+
 /**
  * Created by Roxane P. on 4/22/16.
  * share from drawable
@@ -14,23 +19,32 @@ import org.cobaltians.cobalt.Cobalt;
 public class ShareLocalFile implements ShareDataInterface {
 
     private static final String TAG = "ShareLocalFile";
-    private final int resourceId;
     private final String type;
-    private final String title;
-    private final String detail;
+    private int resourceId;
+    private String path;
+    private String title;
+    private String detail;
 
     /**
-     * Simple constructor
-     * @param type - type of the file (image / file / document ...)
-     * @param resourceId - context
-     * @param title - resource id
-     * @param detail - context
+     * ShareLocalFile constructor
+     * @param data - Map data of the file (image / file / document ...)
      */
-    public ShareLocalFile(String type, int resourceId, String title, String detail) {
-        this.type = type;
-        this.resourceId = resourceId;
-        this.title = title;
-        this.detail = detail;
+    public ShareLocalFile(Map data) {
+        // mandatory data
+        this.type = data.get("type").toString();
+        if (data.containsKey("path")) {
+            this.path = data.get("path").toString();
+        } else if (data.containsKey("id")) {
+            this.resourceId = Integer.decode(data.get("id").toString());
+            if (Cobalt.DEBUG) Log.d(TAG, "Constructor decoded resource id, found " + resourceId + ".");
+        }
+        // optional data
+        if (data.containsKey("title")) {
+            this.title = data.get("title").toString();
+        }
+        if (data.containsKey("detail")) {
+            this.detail = data.get("detail").toString();
+        }
     }
 
     /**
@@ -50,14 +64,14 @@ public class ShareLocalFile implements ShareDataInterface {
                     Log.d(TAG, "Found image view " + SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId) + " drawable to string " + bitmap.toString());
                 }
                 // generate uri
-                Uri bmpUri = SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId);
+                uri = SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId);
                 // place file type
                 share.setType("image/*");
                 // place extras
                 share.putExtra(Intent.EXTRA_SUBJECT, title);
                 share.putExtra(Intent.EXTRA_TEXT, detail);
                 //share.putExtra(Intent.EXTRA_STREAM, Uri.parse(path));
-                share.putExtra(Intent.EXTRA_STREAM, bmpUri);
+                share.putExtra(Intent.EXTRA_STREAM, uri);
                 // return intent for launching
                 return share;
             case SharePlugin.TYPE_AUDIO_KEY:

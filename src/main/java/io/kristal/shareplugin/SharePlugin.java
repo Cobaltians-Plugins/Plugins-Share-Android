@@ -32,6 +32,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
+import android.os.Environment;
 import android.support.annotation.AnyRes;
 import android.support.annotation.NonNull;
 import android.util.Log;
@@ -41,10 +42,23 @@ import org.cobaltians.cobalt.Cobalt;
 import org.cobaltians.cobalt.fragments.CobaltFragment;
 import org.cobaltians.cobalt.plugin.CobaltAbstractPlugin;
 import org.cobaltians.cobalt.plugin.CobaltPluginWebContainer;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.util.Map;
+
+import io.kristal.shareplugin.shareDataClass.ShareContactData;
+import io.kristal.shareplugin.shareDataClass.ShareLocalFile;
+import io.kristal.shareplugin.shareDataClass.ShareRemoteFile;
+import io.kristal.shareplugin.shareDataClass.ShareSimpleShareData;
+import io.kristal.shareplugin.utils.ParsingShareData;
+
+/**
+ * Created by Roxane P. on 4/18/16.
+ * SharePlugin
+ * Start an intent for sharing a file from data given by a Json Object Message
+ */
 public class SharePlugin extends CobaltAbstractPlugin {
 
     protected final static String TAG = SharePlugin.class.getSimpleName();
@@ -59,7 +73,11 @@ public class SharePlugin extends CobaltAbstractPlugin {
 
     protected static SharePlugin sInstance;
     private String mType;
-    public static Boolean forceChooser = true;
+    private Boolean forceChooser = true;
+
+    /**************************************************************************************
+     * CONSTANTS MEMBERS
+     **************************************************************************************/
 
     // data extension types - string
     public static final String TYPE_IMAGE_KEY = "image";
@@ -67,6 +85,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
     public static final String TYPE_VIDEO_KEY = "video";
     public static final String TYPE_AUDIO_KEY = "audio";
     public static final String TYPE_DOCUMENT_KEY = "document";
+    public static final String TYPE_CONTACT_KEY = "contact";
     public static final String TYPE_DATA_KEY = "data";
 
     // data source types
@@ -76,6 +95,10 @@ public class SharePlugin extends CobaltAbstractPlugin {
     public static final int dataFromContentProvider = 3;
     public static final int dataFromAssets = 4;
     public static final int dataFromString = 5;
+    public static final int dataFromContact = 6;
+
+    // file path of the downloaded remote files
+    public static String pathRemoteFile;
 
     /**************************************************************************************
      * CONSTRUCTORS
@@ -88,63 +111,51 @@ public class SharePlugin extends CobaltAbstractPlugin {
     }
 
     @Override
-    public void onMessage(CobaltPluginWebContainer webContainer, JSONObject message) {
+    public void onMessage(CobaltPluginWebContainer webContainer, JSONObject message) throws JSONException {
         Log.d(TAG, "onMessage called with message: " + message.toString());
         mWebContainer = webContainer;
         currentFragment = webContainer.getFragment();
+
+        pathRemoteFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Android/data/" + currentFragment.getContext().getPackageName() + "/CobaltiansStorage/";
+
+        // check if main path exist
+        final File f = new File(pathRemoteFile);
+        if (!f.isDirectory()) {
+            if (Cobalt.DEBUG) Log.d(TAG, "Creating files for files storage: mkdirs " + (f.mkdirs() ? " success" : "failled"));
+        }
 
         try {
             String action = message.getString(Cobalt.kJSAction);
             //Log.d(TAG, "check action, got " + SHARE_ME_APP + " receveid " + action);
             if (action.equals(SHARE_ME_APP)) {
+
                 // setting up share
                 CobaltFragment fragment = webContainer.getFragment();
+                Log.d(TAG, "start");
+                //testCP();
+                Log.d(TAG, "end");
 
-                int sourceFile;
-                String typeFile;
-                String title;
-                String detail;
-                try {
-                    JSONArray data = message.getJSONArray("data");
-                    typeFile = data.getJSONObject(0).getString("type");
-                    mType = typeFile;
-                    if (typeFile.equals(SharePlugin.TYPE_TEXT_KEY)) {
-                        sourceFile = SharePlugin.dataFromString;
-                    } else {
-                        sourceFile = setSourceFromType(data.getJSONObject(0).getString("source"));
-                    }
-                    switch (sourceFile) {
+                // parse JSON, put into datamap
+                ParsingShareData psd = new ParsingShareData(message);
+                Map datamap = psd.returnDataFromWeb();
+                this.mType = datamap.get("type").toString();
+                Log.d(TAG, "PSD Return = " + datamap.toString());
+
+                if (datamap.containsKey("source")) {
+                    String source = datamap.get("source").toString();
+                    // send intents for items with sources
+                    switch (setSourceFromType(source)) {
                         case SharePlugin.dataFromDrawable:
-                            int resourceId = data.getJSONObject(0).getInt("id");
-                            // optionals types
-                            title = data.getJSONObject(0).getString("title");
-                            detail = data.getJSONObject(0).getString("detail");
-                            if (Cobalt.DEBUG) {
-                                Log.d(TAG, "Extracted data are: type:" + typeFile + " resID:" + resourceId + " title:" + title + " detail:" + detail);
-                            }
-                            doShare(new ShareLocalFile(typeFile, resourceId, title, detail).returnShareIntent());
+                            doShare(new ShareLocalFile(datamap).returnShareIntent());
                             break;
                         case SharePlugin.dataFromUrl:
-                            String url = data.getJSONObject(0).getString("path");
-                            // optionals types
-                            title = data.getJSONObject(0).getString("title");
-                            detail = data.getJSONObject(0).getString("detail");
-                            if (Cobalt.DEBUG) {
-                                Log.d(TAG, "Extracted data are: type:" + typeFile + " url:" + url + " title:" + title + " detail:" + detail);
-                            }
-                            doShare(new ShareRemoteFile(typeFile, url, title, detail).returnShareIntent());
+                            doShare(new ShareRemoteFile(datamap).returnShareIntent());
                             break;
                         case SharePlugin.dataFromAssets:
                             // TODO: 4/22/16 create class for assets sources
                             break;
                         case SharePlugin.dataFromSDCard:
                             // TODO: 4/22/16 create class for SDCard source
-                            break;
-                        case SharePlugin.dataFromString:
-                            // mandatory data
-                            title = data.getJSONObject(0).getString("title");
-                            detail = data.getJSONObject(0).getString("content");
-                            doShare(new ShareSimpleShareData(title, detail).returnShareIntent());
                             break;
                         case SharePlugin.dataFromContentProvider:
                             // TODO: 4/22/16 create class for ContentProvider source
@@ -153,8 +164,18 @@ public class SharePlugin extends CobaltAbstractPlugin {
                             Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
                             break;
                     }
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                } else {
+                    switch (this.mType) {
+                        case "contact":
+                            doShare(new ShareContactData(datamap).returnShareIntent());
+                            break;
+                        case "text":
+                            doShare(new ShareSimpleShareData(datamap).returnShareIntent());
+                            break;
+                        default:
+                            Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
+                            break;
+                    }
                 }
                 // send callback
                 JSONObject data = new JSONObject();
@@ -175,7 +196,6 @@ public class SharePlugin extends CobaltAbstractPlugin {
         if (Cobalt.DEBUG) {
             Log.d(TAG, "cobalt.share will share intent " + intent.toString() + " " + intent.getData() + " " + intent.getPackage() + " " + intent.getScheme());
         }
-
         for (String key : intent.getExtras().keySet()) {
             Object value = intent.getExtras().get(key);
             if (value != null) {
@@ -221,16 +241,18 @@ public class SharePlugin extends CobaltAbstractPlugin {
         if (extension != null) {
             type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
         }
-        if (Cobalt.DEBUG) Log.d(TAG, "getMimeType found extension ."+ extension + ", added MimeType: " + type);
+        if (Cobalt.DEBUG)
+            Log.d(TAG, "getMimeType found extension ." + extension + ", added MimeType: " + type);
         return type;
     }
 
     /**
      * get uri to any resource type
+     *
      * @param context - context
-     * @param resId - resource id
-     * @throws Resources.NotFoundException if the given ID does not exist.
+     * @param resId   - resource id
      * @return - Uri to resource by given id
+     * @throws Resources.NotFoundException if the given ID does not exist.
      */
     public static final Uri getUriToResource(@NonNull Context context, @AnyRes int resId) throws Resources.NotFoundException {
         /** Return a Resources instance for your application's package. */
@@ -247,5 +269,34 @@ public class SharePlugin extends CobaltAbstractPlugin {
                 + '/' + res.getResourceEntryName(resId));
         /** return uri */
         return resUri;
+    }
+
+    /* Adapt the string argument to be use as file name in a filesystem */
+    public static String fileNameForFileSystem(String fileName) {
+        String ret = fileName;
+        ret = ret.replace(' ', '.');
+        ret = ret.replace('%', '.');
+        ret = ret.replace('/', '.');
+        ret = ret.replace('\\', '.');
+        return ret;
+    }
+
+    /* Checks if external storage is available for read and write */
+    public boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            return true;
+        }
+        return false;
+    }
+
+    /* Checks if external storage is available to at least read */
+    public boolean isExternalStorageReadable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state) ||
+                Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
+            return true;
+        }
+        return false;
     }
 }

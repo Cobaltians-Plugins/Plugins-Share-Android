@@ -1,14 +1,14 @@
-package io.kristal.shareplugin;
+package io.kristal.shareplugin.shareDataClass;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.net.Uri;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
 import org.cobaltians.cobalt.Cobalt;
@@ -20,6 +20,10 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Map;
+
+import io.kristal.shareplugin.interfaces.ShareDataInterface;
+import io.kristal.shareplugin.SharePlugin;
 
 /**
  * Created by Roxane P. on 4/22/16.
@@ -31,31 +35,36 @@ public class ShareRemoteFile implements ShareDataInterface {
     private final String rawUrl;
     private URL mUrl;
     private final String mType;
-    private final String mTitle;
-    private final String mDetail;
+    private String mTitle = null; // TODO: 4/28/16 find a better approach
+    private String mDetail = null;
 
     /**
-     * Simple constructor
-     * @param type - mType of the file (image / file / document ...)
-     * @param url - remote link of the file
-     * @param title - resource id
-     * @param detail - context
+     * ShareRemoteFile constructor
+     * Load and send an intent from files data
+     * @param data - hashMap containing file's data
      */
-    public ShareRemoteFile(String type, String url, String title, String detail) {
-        this.mType = type;
-        this.mTitle = title;
-        this.mDetail = detail;
-        this.rawUrl = url;
+    public ShareRemoteFile(Map data) {
+        // mandatory data
+        this.mType = data.get("type").toString();
+        this.rawUrl = data.get("path").toString();
         try {
-            this.mUrl = new URL(url);
+            this.mUrl = new URL(this.rawUrl);
         } catch (MalformedURLException e) {
-            Log.e(TAG, "Error while parsing URL " + url + ".");
+            Log.e(TAG, "Error while parsing URL " + this.rawUrl + ".");
             e.printStackTrace();
+        }
+        // optional data
+        if (data.containsKey("title")) {
+            this.mTitle = SharePlugin.fileNameForFileSystem(data.get("title").toString());
+        }
+        if (data.containsKey("detail")) {
+            this.mDetail = data.get("detail").toString();
         }
     }
 
     /**
      * return a ready-to-launch intent for different resource files
+     * TODO: 4/22/16 other protocol (ftp, smb...)
      */
     @Override
     public Intent returnShareIntent() {
@@ -89,7 +98,7 @@ public class ShareRemoteFile implements ShareDataInterface {
                 return share;
             case SharePlugin.TYPE_AUDIO_KEY:
                 share = new Intent(Intent.ACTION_SEND);
-                // set MimeType
+                // set MimeType [audio/*]
                 share.setType(SharePlugin.getMimeType(rawUrl));
                 // place extras
                 share.putExtra(Intent.EXTRA_SUBJECT, mTitle);
@@ -99,7 +108,7 @@ public class ShareRemoteFile implements ShareDataInterface {
             case SharePlugin.TYPE_DOCUMENT_KEY:
                 // TODO: 4/22/16 document file (pdf, docx, xml) from url
                 share = new Intent(Intent.ACTION_SEND);
-                // set MimeType
+                // set MimeType [application/*]
                 share.setType(SharePlugin.getMimeType(rawUrl));
                 // place extras
                 share.putExtra(Intent.EXTRA_SUBJECT, mTitle);
@@ -109,7 +118,7 @@ public class ShareRemoteFile implements ShareDataInterface {
             case SharePlugin.TYPE_VIDEO_KEY:
                 // TODO: 4/22/16 video file from url
                 share = new Intent(Intent.ACTION_SEND);
-                // set MimeType
+                // set MimeType [video/*]
                 share.setType(SharePlugin.getMimeType(rawUrl));
                 // place extras
                 share.putExtra(Intent.EXTRA_SUBJECT, mTitle);
@@ -117,9 +126,8 @@ public class ShareRemoteFile implements ShareDataInterface {
                 share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(downloadFileFromUrl()));
                 return share;
             case SharePlugin.TYPE_DATA_KEY:
-                // TODO: 4/22/16 other data from other protocol (ftp, smb...)
                 share = new Intent(Intent.ACTION_SEND);
-                // set MimeType
+                // set MimeType [unknown]
                 share.setType(SharePlugin.getMimeType(rawUrl));
                 // place extras
                 share.putExtra(Intent.EXTRA_SUBJECT, mTitle);
@@ -133,59 +141,70 @@ public class ShareRemoteFile implements ShareDataInterface {
         return null;
     }
 
+    /**
+     * downloadFileFromUrl
+     * create a file from a direct URL to a file
+     * @return file - the downloaded File object
+     */
     private File downloadFileFromUrl() {
-        Boolean startToastShowed = false;
-        //create the new connection
-        HttpURLConnection urlConnection = null;
         File file = null;
-        try {
-            urlConnection = (HttpURLConnection) this.mUrl.openConnection();
-        //set up some things on the connection
-        urlConnection.setRequestMethod("GET");
-        urlConnection.setDoOutput(true);
-        //and connect!
-        urlConnection.connect();
-        //set the path where we want to save the file
-        //in this case, going to save it on the root directory of the
-        //sd card.
-        File SDCardRoot = Environment.getExternalStorageDirectory();
-        // create a new file, specifying the path, and the filename
-        //which we want to save the file as.
-        file = new File(SDCardRoot, this.mTitle);
-        //this will be used to write the downloaded data into the file we created
-        FileOutputStream fileOutput = new FileOutputStream(file);
-
-        //this will be used in reading the data from the internet
-        InputStream inputStream = urlConnection.getInputStream();
-
-        //this is the total size of the file
-        int totalSize = urlConnection.getContentLength();
-        //variable to store total downloaded bytes
+        String fileName = this.mTitle + '.' + (MimeTypeMap.getFileExtensionFromUrl(rawUrl) == null ? "dat" : MimeTypeMap.getFileExtensionFromUrl(rawUrl));
+        // Variable to store total downloaded bytes
         int downloadedSize = 0;
+        Boolean startToastShowed = false;
+        HttpURLConnection urlConnection = null;
 
-        //create a buffer...
-        byte[] buffer = new byte[1024];
-        int bufferLength = 0; // used to store a temporary size of the buffer
-
-        //now, read through the input buffer and write the contents to the file
-        while ( (bufferLength = inputStream.read(buffer)) > 0 ) {
-            //add the data in the buffer to the file in the file output stream (the file on the sd card
-            fileOutput.write(buffer, 0, bufferLength);
-            //add up the size so we know how much is downloaded
-            downloadedSize += bufferLength;
-            //this is where you would do something to report the prgress, like this maybe
-            if (downloadedSize > 0 && !startToastShowed) {
-                if (Cobalt.DEBUG) Log.d(TAG, "Download of " + totalSize + " bytes started.");
-                Toast.makeText(SharePlugin.currentFragment.getContext(), "Downloading " + mType + "in progress...", Toast.LENGTH_LONG).show();
-                startToastShowed = true;
+        try {
+            // Init connection
+            urlConnection = (HttpURLConnection) this.mUrl.openConnection();
+            urlConnection.setRequestMethod("GET");
+            urlConnection.setDoOutput(true);
+            urlConnection.connect();
+            // Set the path where we want to save the file
+            // In this case, going to save it on the root directory of the sd card. + Environment.getExternalStorageDirectory().getAbsolutePath() +
+            File SDCardRoot = new File(SharePlugin.pathRemoteFile);
+            if (Cobalt.DEBUG) Log.d(TAG, "File will be stored in " + SDCardRoot.getAbsolutePath());
+            // Create a new file, specifying the path, and the filename
+            // Which we want to save the file as.
+            file = new File(SDCardRoot, SharePlugin.fileNameForFileSystem(fileName));
+            // Stream for writing the downloaded data into the created file
+            FileOutputStream fileOutput = new FileOutputStream(file);
+            // Stream for reading the data from the internet
+            InputStream inputStream = null;
+            if (urlConnection.getResponseCode() >= HttpURLConnection.HTTP_BAD_REQUEST) {
+                if (Cobalt.DEBUG) Log.e(TAG, "HttpURLConnection return bad code: " + urlConnection.getResponseCode());
+                file.delete();
+                return null;
+            } else {
+                inputStream = urlConnection.getInputStream();
             }
-            if (downloadedSize == totalSize) {
-                if (Cobalt.DEBUG) Log.d(TAG, "Downloaded " + downloadedSize + " bytes stored in " + file.getPath());
-                Toast.makeText(SharePlugin.currentFragment.getContext(), "Downloading completed in " + file.getPath(), Toast.LENGTH_LONG).show();
+            // Get size of the file
+            int totalSize = urlConnection.getContentLength();
+            // Creating an empty buffer
+            byte[] buffer = new byte[1024];
+            int bufferLength = 0; // used to store a temporary size of the buffer
+            // Read through the input buffer and write the contents to the file
+            // TODO: 4/29/16 thread with callback
+            while ((bufferLength = inputStream.read(buffer)) > 0) {
+                // Write data from the buffer to the file on the phone
+                fileOutput.write(buffer, 0, bufferLength);
+                // Updating downloadedSize
+                downloadedSize += bufferLength;
+                // Report the progress
+                if (downloadedSize > 0 && !startToastShowed) {
+                    if (Cobalt.DEBUG) Log.d(TAG, "Download of " + totalSize + " bytes started.");
+                    Toast.makeText(SharePlugin.currentFragment.getContext(), "Downloading " + mType + " in progress...", Toast.LENGTH_LONG).show();
+                    startToastShowed = true;
+                }
+                if (downloadedSize == totalSize) {
+                    if (Cobalt.DEBUG)
+                        Log.d(TAG, "Downloaded " + downloadedSize + " bytes stored in " + file.getPath());
+                    Toast.makeText(SharePlugin.currentFragment.getContext(), "Downloading completed in " + file.getPath(), Toast.LENGTH_LONG).show();
+                }
             }
-        }
-        //close the output stream when done
-        fileOutput.close();
+            // Flush/close the output stream when done
+            fileOutput.flush();
+            fileOutput.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
