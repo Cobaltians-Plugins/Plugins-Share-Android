@@ -2,33 +2,23 @@ package io.kristal.shareplugin.dataProvider;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
-import android.content.Context;
-import android.content.UriMatcher;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.database.Cursor;
-import android.database.SQLException;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
-import android.os.CancellationSignal;
 import android.os.ParcelFileDescriptor;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
-import android.widget.Toast;
-
-import org.cobaltians.cobalt.Cobalt;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.HashMap;
 
 import io.kristal.shareplugin.SharePlugin;
+import io.kristal.shareplugin.utils.IntentsTools;
 
 /**
  * Created by Roxane P. on 4/28/16.
@@ -38,6 +28,7 @@ import io.kristal.shareplugin.SharePlugin;
 public class ShareContentProvider extends ContentProvider {
 
     static final String TAG = "ShareContentProvider";
+    public static int resourceId = 0;
 
     /**************************************************************************************
      * AUTO GENERATED METHODS
@@ -124,7 +115,8 @@ public class ShareContentProvider extends ContentProvider {
             return;
         }
         try {
-            final FileOutputStream fileOutputStream = new FileOutputStream(cacheFile, false);
+            final FileOutputStream fileOutputStream = new FileOutputStream(cacheFile + IntentsTools.getExtension(resourceId), false);
+            Log.v(TAG, "copied file into cache for ressourceId " + cacheFile + IntentsTools.getExtension(resourceId));
             try {
                 // Creating an empty buffer
                 byte[] buffer = new byte[1024];

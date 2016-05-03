@@ -18,7 +18,6 @@ import io.kristal.shareplugin.SharePlugin;
  * Take a Json Object Message from web side
  * Parse it, and return an HashMap containing the data
  */
-
 public class ParsingShareData {
 
     public static final String TAG = "ParsingShareData";

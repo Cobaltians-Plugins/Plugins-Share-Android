@@ -1,7 +1,6 @@
 package io.kristal.shareplugin.shareDataClass;
 
 import android.content.Intent;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
 import android.util.TypedValue;
@@ -10,8 +9,10 @@ import org.cobaltians.cobalt.Cobalt;
 
 import java.util.Map;
 
-import io.kristal.shareplugin.interfaces.ShareDataInterface;
 import io.kristal.shareplugin.SharePlugin;
+import io.kristal.shareplugin.dataProvider.ShareContentProvider;
+import io.kristal.shareplugin.interfaces.ShareDataInterface;
+import io.kristal.shareplugin.utils.IntentsTools;
 
 /**
  * Created by Roxane P. on 4/22/16.
@@ -55,33 +56,35 @@ public class ShareLocalFile implements ShareDataInterface {
     public Intent returnShareIntent() {
         Uri uri;
         Intent share;
+        TypedValue value = new TypedValue();
+        SharePlugin.currentFragment.getContext().getResources().getValue(resourceId, value, true);
         if (this.resourceId > 0) {
             // file comes from drawable id
+            ShareContentProvider.resourceId = this.resourceId;
             share = new Intent(Intent.ACTION_SEND);
             // generate uri
-            uri = SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId);
+            uri = IntentsTools.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId, IntentsTools.getExtension(resourceId));
             if (Cobalt.DEBUG) {
-                Log.d(TAG, "Found image view " + SharePlugin.getUriToResource(SharePlugin.currentFragment.getContext(), resourceId));
+                Log.d(TAG, "Found image view " + uri.toString());
             }
-            // TODO: 4/29/16 bug: file from resources id does not have extensions
             // set MimeType from resource, we need to use TypedValue to get the extension
-            TypedValue value = new TypedValue();
-            SharePlugin.currentFragment.getContext().getResources().getValue(resourceId, value, true);
-            share.setType(SharePlugin.getMimeType(value.string.toString()));
+            share.setType(IntentsTools.getMimeType(value.string.toString()));
             // place extras
-            share.putExtra(Intent.EXTRA_SUBJECT, title);
-            share.putExtra(Intent.EXTRA_TEXT, detail);
+            share.putExtra(Intent.EXTRA_SUBJECT, (title == null ? "Untitled " + type : title));
+            if (detail != null) {
+                share.putExtra(Intent.EXTRA_TEXT, detail);
+            }
             //share.putExtra(Intent.EXTRA_STREAM, Uri.parse(path));
             share.putExtra(Intent.EXTRA_STREAM, uri);
             // return intent for launching
             return share;
         } else if (path != null) {
             // file comes from assets
-            uri = Uri.parse(SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path);
-            Log.v(TAG, "uri " + SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path);
+            uri = Uri.parse(SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path + IntentsTools.getExtension(value.toString()));
+            Log.v(TAG, "uri " + SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path + IntentsTools.getExtension(value.toString()));
             share = new Intent(Intent.ACTION_SEND);
             // set MimeType
-            share.setType(SharePlugin.getMimeType(path));
+            share.setType(IntentsTools.getMimeType(path));
             // place extras
             share.putExtra(Intent.EXTRA_STREAM, uri);
             share.putExtra(android.content.Intent.EXTRA_SUBJECT, (title == null ? "Subject for message" : title));

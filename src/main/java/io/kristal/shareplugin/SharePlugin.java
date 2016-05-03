@@ -23,16 +23,10 @@
 
 package io.kristal.shareplugin;
 
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
-import android.net.Uri;
 import android.os.Environment;
-import android.support.annotation.AnyRes;
-import android.support.annotation.NonNull;
 import android.util.Log;
-import android.webkit.MimeTypeMap;
 
 import org.cobaltians.cobalt.Cobalt;
 import org.cobaltians.cobalt.fragments.CobaltFragment;
@@ -41,13 +35,13 @@ import org.cobaltians.cobalt.plugin.CobaltPluginWebContainer;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.util.Map;
 
 import io.kristal.shareplugin.shareDataClass.ShareContactData;
 import io.kristal.shareplugin.shareDataClass.ShareLocalFile;
 import io.kristal.shareplugin.shareDataClass.ShareRemoteFile;
 import io.kristal.shareplugin.shareDataClass.ShareSimpleShareData;
+import io.kristal.shareplugin.utils.FileSystemTools;
 import io.kristal.shareplugin.utils.ParsingShareData;
 
 /**
@@ -58,7 +52,7 @@ import io.kristal.shareplugin.utils.ParsingShareData;
 public class SharePlugin extends CobaltAbstractPlugin {
 
     protected final static String TAG = SharePlugin.class.getSimpleName();
-    private CobaltPluginWebContainer mWebContainer;
+    private static CobaltPluginWebContainer mWebContainer;
     private static final String SHARE_ME_APP = "share";
 
     /**************************************************************************************
@@ -68,7 +62,8 @@ public class SharePlugin extends CobaltAbstractPlugin {
     protected static SharePlugin sInstance;
     // fragment handler
     public static CobaltFragment currentFragment;
-    private String mType;
+    public static Context currentContext;
+    private static String mType;
 
     /**************************************************************************************
      * CONSTANTS MEMBERS
@@ -87,7 +82,6 @@ public class SharePlugin extends CobaltAbstractPlugin {
     public static final int dataFromAssets = 1;
     public static final int dataFromSDCard = 2;
     public static final int dataFromContentProvider = 3;
-    public static final int del = 4;
     public static final int dataFromUrl = 5;
 
     // File path of the downloaded remote files
@@ -102,7 +96,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
      * *************************************************************************************/
 
     private final String StorageDirectoryName = "CobaltiansStorage";
-    private Boolean forceChooser = true;
+    private static Boolean forceChooser = true;
 
     /**************************************************************************************
      * CONSTRUCTORS
@@ -119,15 +113,14 @@ public class SharePlugin extends CobaltAbstractPlugin {
         Log.d(TAG, "onMessage called with message: " + message.toString());
         mWebContainer = webContainer;
         currentFragment = webContainer.getFragment();
-
+        currentContext = currentFragment.getContext();
         // Create or set the path of the storage directory in the phone
         pathFileStorage = Environment.getExternalStorageDirectory().getAbsolutePath() +
                 "/Android/data/" +
                 currentFragment.getContext().getPackageName() +
                 "/" + StorageDirectoryName + "/";
-        final File f = new File(pathFileStorage);
-        if (!f.isDirectory()) {
-            if (Cobalt.DEBUG) Log.d(TAG, "Creating files for files storage: mkdirs " + (f.mkdirs() ? "succeeded." : "failed."));
+        if (!FileSystemTools.makeDirs(pathFileStorage)) {
+            if (Cobalt.DEBUG) Log.e(TAG, "Can't create directory at " + pathFileStorage);
         }
         // will parse message, create and launching intent
         try {
@@ -139,7 +132,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
                 ParsingShareData psd = new ParsingShareData(message);
                 Map data = psd.returnDataFromWeb();
                 // mType is used for intent title
-                this.mType = data.get("type").toString();
+                mType = data.get("type").toString();
                 // web side return data file to get from a source
                 if (data.containsKey("source")) {
                     String source = data.get("source").toString();
@@ -149,14 +142,15 @@ public class SharePlugin extends CobaltAbstractPlugin {
                             doShare(new ShareLocalFile(data).returnShareIntent());
                             break;
                         case SharePlugin.dataFromUrl:
-                            doShare(new ShareRemoteFile(data).returnShareIntent());
+                            // intent called asynchronously
+                            new ShareRemoteFile(data);
                             break;
                         default:
                             Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
                             break;
                     }
                 } else {
-                    switch (this.mType) {
+                    switch (mType) {
                         case "contact":
                             doShare(new ShareContactData(data).returnShareIntent());
                             break;
@@ -183,9 +177,9 @@ public class SharePlugin extends CobaltAbstractPlugin {
         }
     }
 
-    private void doShare(Intent intent) {
+    public static void doShare(Intent intent) {
         if (intent == null) {
-            Log.e(TAG, "File data not fount: intent is null");
+            Log.e(TAG, "File data not found: intent is null");
             return;
         }
         if (Cobalt.DEBUG) {
@@ -201,7 +195,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
         // launch share activity
         if (forceChooser) {
             // with chooser
-            mWebContainer.getFragment().getContext().startActivity(Intent.createChooser(intent, "Share " + this.mType + " with..."));
+            mWebContainer.getFragment().getContext().startActivity(Intent.createChooser(intent, "Share " + mType + " with..."));
         } else {
             // without chooser
             mWebContainer.getFragment().getContext().startActivity(intent);
@@ -220,78 +214,10 @@ public class SharePlugin extends CobaltAbstractPlugin {
             case "sdcard":
                 source = SharePlugin.dataFromSDCard;
                 break;
-            case "assets":
-                source = SharePlugin.del;
-                break;
             default:
                 source = SharePlugin.dataFromContentProvider;
                 break;
         }
         return source;
-    }
-
-    public static String getMimeType(String url) {
-        String type = null;
-        String extension = MimeTypeMap.getFileExtensionFromUrl(url);
-        if (extension != null) {
-            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-        }
-        if (Cobalt.DEBUG)
-            Log.d(TAG, "getMimeType found extension ." + extension + ", added MimeType: " + type);
-        return type;
-    }
-
-    /**
-     * get uri to any resource type
-     *
-     * @param context - context
-     * @param resId   - resource id
-     * @return - Uri to resource by given id
-     * @throws Resources.NotFoundException if the given ID does not exist.
-     */
-    public static final Uri getUriToResource(@NonNull Context context, @AnyRes int resId) throws Resources.NotFoundException {
-        /** Return a Resources instance for your application's package. */
-        Resources res = context.getResources();
-        /**
-         * Creates a Uri which parses the given encoded URI string.
-         * @param uriString an RFC 2396-compliant, encoded URI
-         * @throws NullPointerException if uriString is null
-         * @return Uri for this given uri string
-         */
-        Uri resUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE +
-                "://" + res.getResourcePackageName(resId)
-                + '/' + res.getResourceTypeName(resId)
-                + '/' + res.getResourceEntryName(resId));
-        /** return uri */
-        return resUri;
-    }
-
-    /* Adapt the string argument to be use as file name in a filesystem */
-    public static String fileNameForFileSystem(String fileName) {
-        String ret = fileName;
-        ret = ret.replace(' ', '.');
-        ret = ret.replace('%', '.');
-        ret = ret.replace('/', '.');
-        ret = ret.replace('\\', '.');
-        return ret;
-    }
-
-    /* Checks if external storage is available for read and write */
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    /* Checks if external storage is available to at least read */
-    public boolean isExternalStorageReadable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state) ||
-                Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-            return true;
-        }
-        return false;
     }
 }
