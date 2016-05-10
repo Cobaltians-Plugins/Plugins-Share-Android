@@ -20,20 +20,11 @@ public class FileSystemTools {
         throw new AssertionError();
     }
 
-
-    // todo: copy files from path1 to path2
-    // create files and directory
-
-    public static File createNewFile(String pathToFile, String fileName) {
-        File file = null;
-        File SDCardRoot = new File(pathToFile);
-        if (Cobalt.DEBUG) Log.d(TAG, "File will be stored in " + SDCardRoot.getAbsolutePath());
-        // Create a new file, specifying the path, and the filename
-        // Which we want to save the file as.
-        file = new File(SDCardRoot, fileName);
-        return file;
-    }
-
+    /**
+     * makeDirs
+     * make a directory at path
+     * @param filePath path of the directory
+     */
     public static boolean makeDirs(String filePath) {
         String folderName = getFolderName(filePath);
         if (stringIsBlank(filePath)) return false;
@@ -131,6 +122,9 @@ public class FileSystemTools {
         return (filePosition == -1) ? "" : filePath.substring(0, filePosition);
     }
 
+    /**
+     * return true is str is empty or null
+     */
     public static boolean stringIsBlank(String str) {
         return (str == null || str.trim().length() == 0);
     }

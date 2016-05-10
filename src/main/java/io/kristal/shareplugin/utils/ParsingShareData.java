@@ -10,8 +10,6 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.kristal.shareplugin.SharePlugin;
-
 /**
  * Created by Roxane P. on 4/18/16.
  * ParsingShareData
@@ -21,7 +19,9 @@ import io.kristal.shareplugin.SharePlugin;
 public class ParsingShareData {
 
     public static final String TAG = "ParsingShareData";
-
+    // Data store all the key-value for the file in data
+    private Map<String, String> data = new HashMap<String, String>();
+    private JSONObject shareData;
     private JSONObject message;
 
     public ParsingShareData(JSONObject message) {
@@ -35,18 +35,15 @@ public class ParsingShareData {
      * @throws JSONException if the given JSON message is malformed.
      */
     public Map<String, String> returnDataFromWeb() throws JSONException {
-        // Data store all the key-value for the file in data
-        Map<String, String> data = new HashMap<String, String>();
-
         // Extract data in JSONObject from JSONArray
-        JSONArray messageJSONArray = message.getJSONArray("data");
-        JSONObject shareData = messageJSONArray.getJSONObject(0);
+        JSONArray messageJSONArray = message.getJSONArray(Tokens.JS_TOKEN_DATA_TYPE);
+        shareData = messageJSONArray.getJSONObject(0);
 
         // Type is a mandatory value
-        if (!shareData.has("type")) return null;
-        String typeFile = shareData.getString("type");
+        if (!shareData.has(Tokens.JS_TOKEN_TYPE)) return null;
+        String typeFile = shareData.getString(Tokens.JS_TOKEN_TYPE);
         // Set type of file
-        data.put("type", typeFile);
+        putInData(Tokens.JS_TOKEN_TYPE);
 
         // Set data of this file in map
         switch (typeFile) {
@@ -55,103 +52,95 @@ public class ParsingShareData {
              * mandatory params: type, content
              * optional params: title
              */
-            case SharePlugin.TYPE_TEXT_KEY:
+            case Tokens.JS_TOKEN_TEXT_TYPE:
                 // mandatory data:
-                data.put("content", shareData.getString("content"));
-                if (shareData.has("title")) {
-                    data.put("title", shareData.getString("title"));
-                }
+                putInData(Tokens.JS_TOKEN_TEXT_CONTENT, true);
+                // others data:
+                putInData(Tokens.JS_TOKEN_TITLE);
                 if (Cobalt.DEBUG)
-                    Log.d(TAG, SharePlugin.TYPE_TEXT_KEY + " Json parsed: " + data.toString());
+                    Log.d(TAG, Tokens.JS_TOKEN_TEXT_TYPE + " Json parsed: " + data.toString());
                 return data;
             /**
              * Return share data for a contact
              * mandatory params: type, name, mobile
              * optional params: email, company, postal, job, detail
              */
-            case SharePlugin.TYPE_CONTACT_KEY:
+            case Tokens.JS_TOKEN_CONTACT_TYPE:
                 // mandatory data:
-                if (shareData.has("name") && shareData.has("mobile")) {
-                    data.put("name", shareData.getString("name"));
-                    data.put("mobile", shareData.getString("mobile"));
-                } else {
-                    return null; // TODO: 4/28/16 error catching
-                }
+                putInData(Tokens.JS_TOKEN_CONTACT_NAME, true);
+                putInData(Tokens.JS_TOKEN_CONTACT_MOBILE, true);
                 // others data:
-                if (shareData.has("email")) {
-                    data.put("email", shareData.getString("email"));
-                }
-                if (shareData.has("company")) {
-                    data.put("company", shareData.getString("company"));
-                }
-                if (shareData.has("postal")) {
-                    data.put("postal", shareData.getString("postal"));
-                }
-                if (shareData.has("job")) {
-                    data.put("job", shareData.getString("job"));
-                }
-                if (shareData.has("detail")) {
-                    data.put("detail", shareData.getString("detail"));
-                }
+                putInData(Tokens.JS_TOKEN_CONTACT_EMAIL);
+                putInData(Tokens.JS_TOKEN_CONTACT_COMPANY);
+                putInData(Tokens.JS_TOKEN_CONTACT_POSTAL);
+                putInData(Tokens.JS_TOKEN_CONTACT_JOB);
+                putInData(Tokens.JS_TOKEN_DETAIL);
                 if (Cobalt.DEBUG)
-                    Log.d(TAG, SharePlugin.TYPE_CONTACT_KEY + " Json parsed: " + data.toString());
+                    Log.d(TAG, Tokens.JS_TOKEN_CONTACT_TYPE + " Json parsed: " + data.toString());
                 return data;
             /**
-             * Return share data for a image
-             * mandatory params: type, source, path / id
+             * Return share data for type of file (image/data/audio/video/document)
+             * mandatory params: type, source, path / local => assets todo
              * optional params: title, detail
              */
-            case SharePlugin.TYPE_IMAGE_KEY:
+            case Tokens.JS_TOKEN_IMAGE_TYPE:
+            case Tokens.JS_TOKEN_DATA_TYPE:
+            case Tokens.JS_TOKEN_AUDIO_TYPE:
+            case Tokens.JS_TOKEN_VIDEO_TYPE:
+            case Tokens.JS_TOKEN_DOCUMENT_TYPE:
                 // mandatory data:
-                if (shareData.has("source") && shareData.has("path")) {
-                    data.put("source", shareData.getString("source"));
-                    data.put("path", shareData.getString("path"));
-                } else if (shareData.has("source") && shareData.has("id")) {
-                    data.put("source", shareData.getString("source"));
-                    data.put("id", shareData.getString("id"));
+                if (shareData.has(Tokens.JS_TOKEN_SOURCE) && shareData.has(Tokens.JS_TOKEN_PATH)) {
+                    putInData(Tokens.JS_TOKEN_SOURCE, true);
+                    putInData(Tokens.JS_TOKEN_PATH, true);
+                } else if (shareData.has(Tokens.JS_TOKEN_SOURCE) && shareData.has(Tokens.JS_TOKEN_LOCAL)) {
+                    putInData(Tokens.JS_TOKEN_SOURCE, true);
+                    putInData(Tokens.JS_TOKEN_LOCAL, true);
                 } else {
-                    return null; // TODO: 4/28/16 error catching
+                    Log.e(TAG, "Error while parsing: data must have an assets or local path");
+                    return null;
                 }
                 // others data:
-                if (shareData.has("title")) {
-                    data.put("title", shareData.getString("title"));
-                }
-                if (shareData.has("detail")) {
-                    data.put("detail", shareData.getString("detail"));
-                }
+                putInData(Tokens.JS_TOKEN_TITLE);
+                putInData(Tokens.JS_TOKEN_DETAIL);
                 if (Cobalt.DEBUG)
-                    Log.d(TAG, SharePlugin.TYPE_IMAGE_KEY + " Json parsed: " + data.toString());
-                return data;
-            /**
-             * Return share data for type of file (data/audio/video/document)
-             * mandatory params: type, source, path / id
-             * optional params: title, detail
-             */
-            case SharePlugin.TYPE_DATA_KEY:
-            case SharePlugin.TYPE_AUDIO_KEY:
-            case SharePlugin.TYPE_VIDEO_KEY:
-            case SharePlugin.TYPE_DOCUMENT_KEY:
-                // mandatory data:
-                if (shareData.has("source") && shareData.has("path")) {
-                    data.put("source", shareData.getString("source"));
-                    data.put("path", shareData.getString("path"));
-                } else if (shareData.has("source") && shareData.has("id")) {
-                    data.put("source", shareData.getString("source"));
-                    data.put("id", shareData.getString("id"));
-                } else {
-                    return null; // TODO: 4/28/16 error catching
-                }
-                // others data:
-                if (shareData.has("title")) {
-                    data.put("title", shareData.getString("title"));
-                }
-                if (shareData.has("detail")) {
-                    data.put("detail", shareData.getString("detail"));
-                }
-                if (Cobalt.DEBUG)
-                    Log.d(TAG, SharePlugin.TYPE_DATA_KEY + " Json parsed: " + data.toString());
+                    Log.d(TAG, Tokens.JS_TOKEN_IMAGE_TYPE + " Json parsed: " + data.toString());
                 return data;
         }
         return null;
+    }
+
+    /**
+     * Set item 'token' in file data
+     * @param token a immutable string to localise value in JSON object
+     */
+    private void putInData(String token) {
+        if (!shareData.has(token)) return;
+        try {
+            data.put(token, shareData.getString(token));
+        } catch (JSONException e) {
+            Log.e(TAG, "Error while parsing data from web.");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Set item 'token' in file data
+     * Throws an exception if i can't set it
+     * @param token a immutable string to localise value in JSON object
+     * @param mandatoriness is true when value is mandatory
+     */
+    private void putInData(String token, boolean mandatoriness) {
+        if (mandatoriness) {
+            if (!shareData.has(token)) {
+                Log.e(TAG, "Error while parsing: " + token + " is a mandatory fields.");
+                return;
+            }
+        }
+        try {
+            data.put(token, shareData.getString(token));
+        } catch (JSONException e) {
+            Log.e(TAG, "Error while parsing data from web.");
+            e.printStackTrace();
+        }
     }
 }

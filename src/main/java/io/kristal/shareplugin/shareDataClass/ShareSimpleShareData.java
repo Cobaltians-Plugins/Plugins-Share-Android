@@ -1,10 +1,12 @@
 package io.kristal.shareplugin.shareDataClass;
 
 import android.content.Intent;
+import android.webkit.MimeTypeMap;
 
 import java.util.Map;
 
 import io.kristal.shareplugin.interfaces.ShareDataInterface;
+import io.kristal.shareplugin.utils.Tokens;
 
 /**
  * Created by Roxane P. on 4/22/16.
@@ -20,9 +22,9 @@ public class ShareSimpleShareData implements ShareDataInterface {
      */
     public ShareSimpleShareData(Map data) {
         // mandatory data
-        this.text = data.get("content").toString();
+        this.text = data.get(Tokens.JS_TOKEN_TEXT_CONTENT).toString();
         // optional data
-        if (data.containsKey("title")) this.title = data.get("title").toString();
+        if (data.containsKey(Tokens.JS_TOKEN_TITLE)) this.title = data.get(Tokens.JS_TOKEN_TITLE).toString();
     }
 
     /**
@@ -31,7 +33,7 @@ public class ShareSimpleShareData implements ShareDataInterface {
     public Intent returnShareIntent() {
         Intent share = new Intent();
         share.setAction(Intent.ACTION_SEND);
-        share.putExtra(Intent. EXTRA_TEXT, text);
+        share.putExtra(Intent.EXTRA_TEXT, text);
         if (title != null) share.putExtra(Intent.EXTRA_SUBJECT, title);
         share.setType("text/plain");
         return share;

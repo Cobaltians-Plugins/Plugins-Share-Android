@@ -38,19 +38,24 @@ public class IntentsTools {
     // get Extension From url
     public static String getExtension(String url) {
         String extension = MimeTypeMap.getFileExtensionFromUrl(url);
-        if (extension == null) {
-            return "data"; // default extention
+        if (FileSystemTools.stringIsBlank(extension)) {
+            return "data"; // default extension
         }
         if (Cobalt.DEBUG)
-            Log.d(TAG, "getExtension found extension ." + extension);
+            Log.d(TAG, "getMimeType found extension ." + extension);
         return extension;
     }
 
     // get MimeType From resource Id
     public static String getExtension(int resourceId) {
+        String ret;
         if (resourceId <= 0) return null;
         TypedValue value = new TypedValue();
         SharePlugin.currentContext.getResources().getValue(resourceId, value, true);
+        ret = getExtension(value.string.toString());
+        if (FileSystemTools.stringIsBlank(ret)) {
+            return "data";
+        }
         return getExtension(value.string.toString());
     }
 
@@ -59,7 +64,7 @@ public class IntentsTools {
         int stringId = SharePlugin.currentContext.getApplicationInfo().labelRes;
         return SharePlugin.currentContext.getString(stringId);
     }
-    
+
     /**
      * get uri to any resource type
      *
@@ -68,21 +73,27 @@ public class IntentsTools {
      * @return - Uri to resource by given id
      * @throws Resources.NotFoundException if the given ID does not exist.
      */
-    public static final Uri getUriToResource(@NonNull Context context, @AnyRes int resId, String extention) throws Resources.NotFoundException {
-        /** Return a Resources instance for your application's package. */
+    public static Uri getUriToResource(@NonNull Context context, @AnyRes int resId, String extention) throws Resources.NotFoundException {
+        // Return a resource instance for your application's package.
         Resources res = context.getResources();
-        /**
-         * Creates a Uri which parses the given encoded URI string.
-         * @param uriString an RFC 2396-compliant, encoded URI
-         * @throws NullPointerException if uriString is null
-         * @return Uri for this given uri string
-         */
-        Uri resUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE +
+        return Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE +
                 "://" + res.getResourcePackageName(resId)
                 + '/' + res.getResourceTypeName(resId)
                 + '/' + res.getResourceEntryName(resId) + "." + extention);
-        /** return uri */
-        return resUri;
     }
 
+    /**
+     * return true if str contain a numeric
+     */
+    public static boolean isInteger(String str) {
+        try {
+            Integer.parseInt(str);
+        } catch (NumberFormatException e) {
+            return false;
+        } catch (NullPointerException e) {
+            return false;
+        }
+        // only got here if we didn't return false
+        return true;
+    }
 }

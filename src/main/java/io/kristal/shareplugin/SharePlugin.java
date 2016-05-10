@@ -8,10 +8,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- *
+ * <p/>
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- *
+ * <p/>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,7 +19,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
-**/
+ **/
 
 package io.kristal.shareplugin;
 
@@ -43,6 +43,7 @@ import io.kristal.shareplugin.shareDataClass.ShareRemoteFile;
 import io.kristal.shareplugin.shareDataClass.ShareSimpleShareData;
 import io.kristal.shareplugin.utils.FileSystemTools;
 import io.kristal.shareplugin.utils.ParsingShareData;
+import io.kristal.shareplugin.utils.Tokens;
 
 /**
  * Created by Roxane P. on 4/18/16.
@@ -68,21 +69,6 @@ public class SharePlugin extends CobaltAbstractPlugin {
     /**************************************************************************************
      * CONSTANTS MEMBERS
      **************************************************************************************/
-
-    // Data extension types - string
-    public static final String TYPE_IMAGE_KEY = "image";
-    public static final String TYPE_TEXT_KEY = "text";
-    public static final String TYPE_VIDEO_KEY = "video";
-    public static final String TYPE_AUDIO_KEY = "audio";
-    public static final String TYPE_DOCUMENT_KEY = "document";
-    public static final String TYPE_CONTACT_KEY = "contact";
-    public static final String TYPE_DATA_KEY = "data";
-
-    // Data source types
-    public static final int dataFromAssets = 1;
-    public static final int dataFromSDCard = 2;
-    public static final int dataFromContentProvider = 3;
-    public static final int dataFromUrl = 5;
 
     // File path of the downloaded remote files
     public static String pathFileStorage;
@@ -129,32 +115,35 @@ public class SharePlugin extends CobaltAbstractPlugin {
                 // setting up share
                 CobaltFragment fragment = webContainer.getFragment();
                 // parse JSON, put into an hashMap
-                ParsingShareData psd = new ParsingShareData(message);
+                ParsingShareData psd = new ParsingShareData(message.getJSONObject(Tokens.JS_TOKEN_DATA_TYPE));
                 Map data = psd.returnDataFromWeb();
                 // mType is used for intent title
-                mType = data.get("type").toString();
+                mType = data.get(Tokens.JS_TOKEN_TYPE).toString();
                 // web side return data file to get from a source
-                if (data.containsKey("source")) {
-                    String source = data.get("source").toString();
+                if (data.containsKey(Tokens.JS_TOKEN_SOURCE)) {
+                    String source = data.get(Tokens.JS_TOKEN_SOURCE).toString();
                     // send intents for items with sources
-                    switch (setSourceFromType(source)) {
-                        case SharePlugin.dataFromAssets:
+                    switch (source) {
+                        case Tokens.JS_TOKEN_LOCAL:
                             doShare(new ShareLocalFile(data).returnShareIntent());
                             break;
-                        case SharePlugin.dataFromUrl:
+                        case Tokens.JS_TOKEN_REMOTE:
                             // intent called asynchronously
                             new ShareRemoteFile(data);
                             break;
+                        // case Tokens.JS_TOKEN_PHONE:
+                        // TODO: 5/10/16 file comes from internal (dd) or external (sdcard) phone storage
+                        // break;
                         default:
                             Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
                             break;
                     }
                 } else {
                     switch (mType) {
-                        case "contact":
+                        case Tokens.JS_TOKEN_CONTACT_TYPE:
                             doShare(new ShareContactData(data).returnShareIntent());
                             break;
-                        case "text":
+                        case Tokens.JS_TOKEN_TEXT_TYPE:
                             doShare(new ShareSimpleShareData(data).returnShareIntent());
                             break;
                         default:
@@ -164,7 +153,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
                 }
                 // send callback
                 JSONObject callback = new JSONObject();
-                callback.put("cobalt.share", "share completed");
+                callback.put("cobalt.share", "Share action complete.");
                 // send callback
                 fragment.sendCallback(message.getString(Cobalt.kJSCallback), callback);
             } else if (Cobalt.DEBUG)
@@ -183,13 +172,13 @@ public class SharePlugin extends CobaltAbstractPlugin {
             return;
         }
         if (Cobalt.DEBUG) {
-            Log.d(TAG, "cobalt.share will share intent " + intent.toString() + " " + intent.getData() + " " + intent.getPackage() + " " + intent.getScheme());
-        }
-        for (String key : intent.getExtras().keySet()) {
-            Object value = intent.getExtras().get(key);
-            if (value != null) {
-                Log.d(TAG, String.format("%s %s (%s)", key,
-                        value.toString(), value.getClass().getName()));
+            Log.d(TAG, "cobalt.share will share intent " + intent.toString() + " with extras:");
+            for (String key : intent.getExtras().keySet()) {
+                Object value = intent.getExtras().get(key);
+                if (value != null) {
+                    Log.d(TAG, String.format("%s %s (%s)", key,
+                            value.toString(), value.getClass().getName()));
+                }
             }
         }
         // launch share activity
@@ -200,24 +189,5 @@ public class SharePlugin extends CobaltAbstractPlugin {
             // without chooser
             mWebContainer.getFragment().getContext().startActivity(intent);
         }
-    }
-
-    private int setSourceFromType(String type) {
-        int source;
-        switch (type) {
-            case "resource":
-                source = SharePlugin.dataFromAssets;
-                break;
-            case "url":
-                source = SharePlugin.dataFromUrl;
-                break;
-            case "sdcard":
-                source = SharePlugin.dataFromSDCard;
-                break;
-            default:
-                source = SharePlugin.dataFromContentProvider;
-                break;
-        }
-        return source;
     }
 }

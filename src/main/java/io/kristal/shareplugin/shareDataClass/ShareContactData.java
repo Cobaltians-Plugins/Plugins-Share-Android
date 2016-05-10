@@ -6,6 +6,7 @@ import android.provider.ContactsContract;
 import java.util.Map;
 
 import io.kristal.shareplugin.interfaces.ShareDataInterface;
+import io.kristal.shareplugin.utils.Tokens;
 
 /**
  * Created by Roxane P. on 4/18/16.
@@ -28,15 +29,15 @@ public class ShareContactData implements ShareDataInterface {
      */
     public ShareContactData(Map data) {
         // mandatory data
-        this.name = data.get("name").toString();
-        this.mobile = data.get("mobile").toString();
+        this.name = data.get(Tokens.JS_TOKEN_CONTACT_NAME).toString();
+        this.mobile = data.get(Tokens.JS_TOKEN_CONTACT_MOBILE).toString();
 
         // optional data
-        if (data.containsKey("email")) this.email = data.get("email").toString();
-        if (data.containsKey("company")) this.email = data.get("company").toString();
-        if (data.containsKey("postal")) this.email = data.get("postal").toString();
-        if (data.containsKey("job")) this.email = data.get("job").toString();
-        if (data.containsKey("detail")) this.email = data.get("detail").toString();
+        if (data.containsKey(Tokens.JS_TOKEN_CONTACT_EMAIL)) this.email = data.get(Tokens.JS_TOKEN_CONTACT_EMAIL).toString();
+        if (data.containsKey(Tokens.JS_TOKEN_CONTACT_COMPANY)) this.company = data.get(Tokens.JS_TOKEN_CONTACT_COMPANY).toString();
+        if (data.containsKey(Tokens.JS_TOKEN_CONTACT_POSTAL)) this.postal = data.get(Tokens.JS_TOKEN_CONTACT_POSTAL).toString();
+        if (data.containsKey(Tokens.JS_TOKEN_CONTACT_JOB)) this.job = data.get(Tokens.JS_TOKEN_CONTACT_JOB).toString();
+        if (data.containsKey(Tokens.JS_TOKEN_DETAIL)) this.detail = data.get(Tokens.JS_TOKEN_DETAIL).toString();
     }
 
     /**
@@ -46,18 +47,15 @@ public class ShareContactData implements ShareDataInterface {
         Intent intent = new Intent(Intent.ACTION_INSERT);
         // Sets the MIME type
         intent.setType(ContactsContract.Contacts.CONTENT_TYPE);
-
         // mandatory data
         intent.putExtra(ContactsContract.Intents.Insert.NAME, this.name);
         intent.putExtra(ContactsContract.Intents.Insert.PHONE, this.mobile);
-
-        // not mandatory
+        // others data
         intent.putExtra(ContactsContract.Intents.Insert.EMAIL, this.email);
         intent.putExtra(ContactsContract.Intents.Insert.COMPANY, this.company);
         intent.putExtra(ContactsContract.Intents.Insert.POSTAL, this.postal);
         intent.putExtra(ContactsContract.Intents.Insert.JOB_TITLE, this.job);
         intent.putExtra(ContactsContract.Intents.Insert.NOTES, this.detail);
-
         return intent;
     }
 }

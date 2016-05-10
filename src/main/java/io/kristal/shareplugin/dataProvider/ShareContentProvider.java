@@ -10,6 +10,9 @@ import android.os.ParcelFileDescriptor;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.webkit.URLUtil;
+
+import org.cobaltians.cobalt.Cobalt;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -83,7 +86,18 @@ public class ShareContentProvider extends ContentProvider {
      */
     @Override
     public AssetFileDescriptor openAssetFile(@NonNull final Uri uri, @NonNull final String mode) throws FileNotFoundException {
-        final String assetPath = uri.getLastPathSegment();
+        // we need to determinate absolute path in assets so file.pdf and Directory/file.pdf both work
+        String token = SharePlugin.AUTHORITY + "/";
+        String fileUri = uri.toString();
+        // search for token which is the contentProvider name
+        int indexOfToken = fileUri.indexOf(token);
+        if (indexOfToken < 0) {
+            Log.e(TAG, "Content provider Internal error.");
+            return null;
+        }
+        indexOfToken = indexOfToken + token.length();
+        // keep only the absolute path
+        final String assetPath = fileUri.substring(indexOfToken, fileUri.length());
         try {
             //final File cacheFile = new File(getContext().getCacheDir(), assetPath);
             final File cacheFile = new File(SharePlugin.pathFileStorage, assetPath);
@@ -106,17 +120,17 @@ public class ShareContentProvider extends ContentProvider {
      */
     private void copyToCacheFile(final String assetPath, final File cacheFile) throws IOException {
         // Copy assetPath to cacheFile.getAbsolutePath());
+        if (Cobalt.DEBUG) Log.d(TAG, "copyToCacheFile copy " + assetPath + " to " + cacheFile.toString() + "...");
         InputStream inputStream = null;
         try {
             inputStream = getContext().getAssets().open(assetPath, AssetManager.ACCESS_BUFFER);
         } catch (FileNotFoundException exception) {
-            Log.e(TAG, "File Not Found in assets: " + assetPath + ", check sent data");
+            Log.e(TAG, "File Not Found in assets: " + assetPath + ", check sent data.");
             exception.getStackTrace();
             return;
         }
         try {
-            final FileOutputStream fileOutputStream = new FileOutputStream(cacheFile + IntentsTools.getExtension(resourceId), false);
-            Log.v(TAG, "copied file into cache for ressourceId " + cacheFile + IntentsTools.getExtension(resourceId));
+            final FileOutputStream fileOutputStream = new FileOutputStream(cacheFile, false);
             try {
                 // Creating an empty buffer
                 byte[] buffer = new byte[1024];

@@ -26,6 +26,7 @@ import io.kristal.shareplugin.interfaces.ShareDataInterface;
 import io.kristal.shareplugin.SharePlugin;
 import io.kristal.shareplugin.utils.FileSystemTools;
 import io.kristal.shareplugin.utils.IntentsTools;
+import io.kristal.shareplugin.utils.Tokens;
 
 /**
  * Created by Roxane P. on 4/22/16.
@@ -44,13 +45,12 @@ public class ShareRemoteFile implements ShareDataInterface {
     /**
      * ShareRemoteFile constructor
      * Load and send an intent from files data
-     *
      * @param data - hashMap containing file's data
      */
     public ShareRemoteFile(Map data) {
         // mandatory data
-        this.mType = data.get("type").toString();
-        this.mRawUrl = data.get("path").toString();
+        this.mType = data.get(Tokens.JS_TOKEN_TYPE).toString();
+        this.mRawUrl = data.get(Tokens.JS_TOKEN_PATH).toString();
         this.mFileName =  URLUtil.guessFileName(this.mRawUrl, null, null); // parse url finding name
         try {
             this.mUrl = new URL(this.mRawUrl);
@@ -59,11 +59,11 @@ public class ShareRemoteFile implements ShareDataInterface {
             e.printStackTrace();
         }
         // optional data
-        if (data.containsKey("title")) {
-            this.mTitle = FileSystemTools.fileNameForFileSystem(data.get("title").toString());
+        if (data.containsKey(Tokens.JS_TOKEN_TITLE)) {
+            this.mTitle = data.get(Tokens.JS_TOKEN_TITLE).toString();
         }
-        if (data.containsKey("detail")) {
-            this.mDetail = data.get("detail").toString();
+        if (data.containsKey(Tokens.JS_TOKEN_DETAIL)) {
+            this.mDetail = data.get(Tokens.JS_TOKEN_DETAIL).toString();
         }
 
         File file = new File(SharePlugin.pathFileStorage + mFileName);
@@ -85,38 +85,44 @@ public class ShareRemoteFile implements ShareDataInterface {
      */
     @Override
     public Intent returnShareIntent() {
+        switch (mType) {
+            case Tokens.JS_TOKEN_IMAGE_TYPE:
+                return createIntent("Picture");
+            case Tokens.JS_TOKEN_AUDIO_TYPE:
+                return createIntent("Music");
+            case Tokens.JS_TOKEN_DOCUMENT_TYPE:
+                return createIntent("Document");
+            case Tokens.JS_TOKEN_VIDEO_TYPE:
+                return createIntent("Video");
+            case Tokens.JS_TOKEN_DATA_TYPE:
+                return createIntent("File");
+            default:
+                Log.e(TAG, "No action defined for this type of file from this source.");
+                return null;
+        }
+    }
+
+    /**
+     * return intent for a type of file
+     **/
+    private Intent createIntent(String fileType) {
         Intent share;
         String applicationName = IntentsTools.getApplicationName();
         StringBuilder stringBuilder = new StringBuilder(56).append("A ");
-        switch (mType) {
-            case SharePlugin.TYPE_IMAGE_KEY:
-                stringBuilder.append("Picture");
-            case SharePlugin.TYPE_AUDIO_KEY:
-                stringBuilder.append("Music");
-            case SharePlugin.TYPE_DOCUMENT_KEY:
-                stringBuilder.append("Document");
-            case SharePlugin.TYPE_VIDEO_KEY:
-                stringBuilder.append("Video");
-            case SharePlugin.TYPE_DATA_KEY:
-                stringBuilder.append("File");
-                stringBuilder.append(" from ").append(applicationName).append("...");
-                if (mTitle == null) mTitle = stringBuilder.toString();
-                // file comes from assets
-                Uri uri = Uri.parse(SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + mFileName);
-                share = new Intent(Intent.ACTION_SEND);
-                // set MimeType
-                share.setType(IntentsTools.getMimeType(mRawUrl));
-                // place extras
-                share.putExtra(Intent.EXTRA_STREAM, uri);
-                share.putExtra(android.content.Intent.EXTRA_SUBJECT, (mTitle == null ? "Subject for message" : mTitle));
-                share.putExtra(android.content.Intent.EXTRA_TEXT, (mDetail == null ? "Body for message" : mTitle));
-                // return intent for launching
-                return share;
-            default:
-                Log.e(TAG, "No action defined for this type of file from this source.");
-                break;
-        }
-        return null;
+        stringBuilder.append(fileType);
+        stringBuilder.append(" from ").append(applicationName).append("...");
+        if (mTitle == null) mTitle = stringBuilder.toString();
+        // file comes from url
+        Uri uri = Uri.parse(mRawUrl);
+        share = new Intent(Intent.ACTION_SEND);
+        // set MimeType
+        share.setType(IntentsTools.getMimeType(mRawUrl));
+        // place extras
+        share.putExtra(Intent.EXTRA_STREAM, uri);
+        share.putExtra(android.content.Intent.EXTRA_SUBJECT, (mTitle == null ? "Subject for message" : mTitle));
+        share.putExtra(android.content.Intent.EXTRA_TEXT, (mDetail == null ? "Body for message" : mDetail));
+        // return intent for launching
+        return share;
     }
 
     /**
