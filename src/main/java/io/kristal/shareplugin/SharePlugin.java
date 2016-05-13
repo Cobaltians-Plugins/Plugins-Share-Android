@@ -95,7 +95,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
     }
 
     @Override
-    public void onMessage(CobaltPluginWebContainer webContainer, JSONObject message) throws JSONException {
+    public void onMessage(CobaltPluginWebContainer webContainer, JSONObject message) {
         Log.d(TAG, "onMessage called with message: " + message.toString());
         mWebContainer = webContainer;
         currentFragment = webContainer.getFragment();
@@ -117,6 +117,10 @@ public class SharePlugin extends CobaltAbstractPlugin {
                 // parse JSON, put into an hashMap
                 ParsingShareData psd = new ParsingShareData(message.getJSONObject(Tokens.JS_TOKEN_DATA_TYPE));
                 Map data = psd.returnDataFromWeb();
+                if (data == null) {
+                    Log.e(TAG, "Fatal: Parsed data is null.");
+                    return;
+                }
                 // mType is used for intent title
                 mType = data.get(Tokens.JS_TOKEN_TYPE).toString();
                 // web side return data file to get from a source

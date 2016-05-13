@@ -169,10 +169,8 @@ public class ShareRemoteFile implements ShareDataInterface {
                 if (Cobalt.DEBUG) Log.d(TAG, mFileName + " will be stored in " + file.getAbsolutePath());
                 // check if connection return proper response
                 if (urlConnection.getResponseCode() >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                    if (Cobalt.DEBUG)
-                        Log.e(TAG, "HttpURLConnection return bad code: " + urlConnection.getResponseCode());
                     FileSystemTools.deleteFile(file.getAbsolutePath());
-                    return null;
+                    return "HttpURLConnection return bad code: " + urlConnection.getResponseCode();
                 }
                 // init stream to be copied
                 InputStream input = new BufferedInputStream(url.openStream());
