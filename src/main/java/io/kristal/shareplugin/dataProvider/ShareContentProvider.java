@@ -10,7 +10,6 @@ import android.os.ParcelFileDescriptor;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
-import android.webkit.URLUtil;
 
 import org.cobaltians.cobalt.Cobalt;
 
@@ -21,7 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import io.kristal.shareplugin.SharePlugin;
-import io.kristal.shareplugin.utils.IntentsTools;
 
 /**
  * Created by Roxane P. on 4/28/16.

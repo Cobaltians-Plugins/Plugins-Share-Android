@@ -1,7 +1,6 @@
 package io.kristal.shareplugin.shareDataClass;
 
 import android.content.Intent;
-import android.webkit.MimeTypeMap;
 
 import java.util.Map;
 

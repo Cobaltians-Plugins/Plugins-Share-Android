@@ -1,17 +1,14 @@
 package io.kristal.shareplugin.shareDataClass;
 
 import android.content.Intent;
-import android.content.res.Resources;
 import android.net.Uri;
 import android.util.Log;
-import android.util.TypedValue;
 
 import org.cobaltians.cobalt.Cobalt;
 
 import java.util.Map;
 
 import io.kristal.shareplugin.SharePlugin;
-import io.kristal.shareplugin.dataProvider.ShareContentProvider;
 import io.kristal.shareplugin.interfaces.ShareDataInterface;
 import io.kristal.shareplugin.utils.IntentsTools;
 import io.kristal.shareplugin.utils.Tokens;

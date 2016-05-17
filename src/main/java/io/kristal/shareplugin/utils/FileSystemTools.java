@@ -1,9 +1,6 @@
 package io.kristal.shareplugin.utils;
 
 import android.os.Environment;
-import android.util.Log;
-
-import org.cobaltians.cobalt.Cobalt;
 
 import java.io.File;
 
