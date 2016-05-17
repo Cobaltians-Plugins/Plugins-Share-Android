@@ -96,7 +96,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
 
     @Override
     public void onMessage(CobaltPluginWebContainer webContainer, JSONObject message) {
-        Log.d(TAG, "onMessage called with message: " + message.toString());
+        if (Cobalt.DEBUG) Log.d(TAG, "onMessage called with message: " + message.toString());
         mWebContainer = webContainer;
         currentFragment = webContainer.getFragment();
         currentContext = currentFragment.getContext();

@@ -31,7 +31,6 @@ import io.kristal.shareplugin.utils.IntentsTools;
 public class ShareContentProvider extends ContentProvider {
 
     static final String TAG = "ShareContentProvider";
-    public static int resourceId = 0;
 
     /**************************************************************************************
      * AUTO GENERATED METHODS

@@ -3,9 +3,12 @@ package io.kristal.shareplugin.shareDataClass;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.PowerManager;
+import android.util.Base64;
 import android.util.Log;
 import android.webkit.URLUtil;
 import android.widget.Toast;
@@ -13,6 +16,7 @@ import android.widget.Toast;
 import org.cobaltians.cobalt.Cobalt;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -21,6 +25,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Objects;
 
 import io.kristal.shareplugin.interfaces.ShareDataInterface;
 import io.kristal.shareplugin.SharePlugin;
@@ -35,6 +40,7 @@ import io.kristal.shareplugin.utils.Tokens;
 public class ShareRemoteFile implements ShareDataInterface {
 
     private static final String TAG = "ShareRemoteFile";
+    private String mPath;
     private URL mUrl;
     private final String mRawUrl;
     private final String mType;
@@ -45,13 +51,14 @@ public class ShareRemoteFile implements ShareDataInterface {
     /**
      * ShareRemoteFile constructor
      * Load and send an intent from files data
+     *
      * @param data - hashMap containing file's data
      */
     public ShareRemoteFile(Map data) {
         // mandatory data
         this.mType = data.get(Tokens.JS_TOKEN_TYPE).toString();
         this.mRawUrl = data.get(Tokens.JS_TOKEN_PATH).toString();
-        this.mFileName =  URLUtil.guessFileName(this.mRawUrl, null, null); // parse url finding name
+        this.mFileName = URLUtil.guessFileName(this.mRawUrl, null, null); // parse url finding name
         try {
             this.mUrl = new URL(this.mRawUrl);
         } catch (MalformedURLException e) {
@@ -67,14 +74,13 @@ public class ShareRemoteFile implements ShareDataInterface {
         }
 
         File file = new File(SharePlugin.pathFileStorage + mFileName);
-        if(file.exists()) { // no need to download a new one
+        if (file.exists()) { // no need to download a new one
             SharePlugin.doShare(returnShareIntent());
         } else {
             SharePlugin.currentFragment.getActivity().runOnUiThread(new Runnable() {
                 public void run() {
                     new DownloadFileAsync().execute(mRawUrl);
                 }
-
             });
         }
     }
@@ -112,8 +118,14 @@ public class ShareRemoteFile implements ShareDataInterface {
         stringBuilder.append(fileType);
         stringBuilder.append(" from ").append(applicationName).append("...");
         if (mTitle == null) mTitle = stringBuilder.toString();
-        // file comes from url
-        Uri uri = Uri.parse(mRawUrl);
+        // check if file exist
+        File file = new File(mPath);
+        if(!file.exists()) {
+            Log.e(TAG, "Error when writing file at " + mPath);
+            return null;
+        }
+        // parse path to uri
+        Uri uri = Uri.fromFile(file);
         share = new Intent(Intent.ACTION_SEND);
         // set MimeType
         share.setType(IntentsTools.getMimeType(mRawUrl));
@@ -158,36 +170,38 @@ public class ShareRemoteFile implements ShareDataInterface {
         protected String doInBackground(String... urls) {
             HttpURLConnection urlConnection;
             try {
-                // Init connection
-                URL url = mUrl;
-                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection = (HttpURLConnection) mUrl.openConnection();
                 urlConnection.setRequestMethod("GET");
-                urlConnection.setDoOutput(true);
+                urlConnection.setConnectTimeout (5000) ;
                 urlConnection.connect();
                 // create file
                 File file = new File(SharePlugin.pathFileStorage, mFileName);
-                if (Cobalt.DEBUG) Log.d(TAG, mFileName + " will be stored in " + file.getAbsolutePath());
+                if (Cobalt.DEBUG)
+                    Log.d(TAG, mFileName + " will be stored in " + file.getAbsolutePath());
                 // check if connection return proper response
                 if (urlConnection.getResponseCode() >= HttpURLConnection.HTTP_BAD_REQUEST) {
                     FileSystemTools.deleteFile(file.getAbsolutePath());
-                    return "HttpURLConnection return bad code: " + urlConnection.getResponseCode();
+                    Log.e(TAG, "HttpURLConnection return bad code: " + urlConnection.getResponseCode() + " when downloading from url " + mRawUrl);
+                    return null;
                 }
                 // init stream to be copied
-                InputStream input = new BufferedInputStream(url.openStream());
-                OutputStream output = new FileOutputStream(SharePlugin.pathFileStorage + mFileName);
+                mPath = SharePlugin.pathFileStorage + mFileName;
+                InputStream input = new BufferedInputStream(mUrl.openStream());
+                OutputStream output = new FileOutputStream(mPath);
                 // write file
                 int count;
                 long total = 0;
                 byte data[] = new byte[1024];
                 while ((count = input.read(data)) > 0) {
                     total += count;
-                    publishProgress("" + (int) ((total * 100) /  urlConnection.getContentLength()));
+                    publishProgress("" + (int) ((total * 100) / urlConnection.getContentLength()));
                     output.write(data, 0, count);
                 }
                 // close stream
                 output.flush();
                 output.close();
                 input.close();
+                return String.valueOf(urlConnection.getContentLength());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -208,10 +222,10 @@ public class ShareRemoteFile implements ShareDataInterface {
             // remove dialog as the download is complete
             mProgressDialog.dismiss();
             if (result != null) {
-                Log.e(TAG, "Download error " + result);
+                if (Cobalt.DEBUG) Log.d(TAG, "File downloaded length " + result);
+                Toast.makeText(SharePlugin.currentFragment.getContext(), "Downloading completed in " + mPath, Toast.LENGTH_LONG).show();
             } else {
-                Log.i(TAG, "File downloaded");
-                Toast.makeText(SharePlugin.currentFragment.getContext(), "Downloading completed in " + SharePlugin.pathFileStorage + mFileName, Toast.LENGTH_LONG).show();
+                Log.e(TAG, "Download error.");
             }
             // finally, launch share
             SharePlugin.doShare(returnShareIntent());
