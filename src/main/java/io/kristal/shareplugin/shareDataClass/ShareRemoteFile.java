@@ -114,6 +114,7 @@ public class ShareRemoteFile implements ShareDataInterface {
         stringBuilder.append(" from ").append(applicationName).append("...");
         if (mTitle == null) mTitle = stringBuilder.toString();
         // check if file exist
+	if (FileSystemTools.stringIsBlank(mPath)) return null;
         File file = new File(mPath);
         if(!file.exists()) {
             Log.e(TAG, "Error when writing file at " + mPath);
