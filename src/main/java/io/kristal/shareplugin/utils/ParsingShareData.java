@@ -36,7 +36,7 @@ public class ParsingShareData {
      */
     public Map<String, String> returnDataFromWeb() throws JSONException {
         // Extract data in JSONObject from JSONArray
-        JSONArray messageJSONArray = message.getJSONArray(Tokens.JS_TOKEN_DATA_TYPE);
+        JSONArray messageJSONArray = message.getJSONArray(Tokens.JS_TOKEN_FILE_DATA);
         shareData = messageJSONArray.getJSONObject(0);
 
         // Type is a mandatory value

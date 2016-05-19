@@ -6,6 +6,8 @@ package io.kristal.shareplugin.utils;
  * Created by Roxane P. on 5/10/16.
  */
 public class Tokens {
+    // decode JSON
+    public static final String JS_TOKEN_FILE_DATA = "data";
     // source of files
     public static final String JS_TOKEN_SOURCE = "source";
     public static final String JS_TOKEN_PATH = "path";

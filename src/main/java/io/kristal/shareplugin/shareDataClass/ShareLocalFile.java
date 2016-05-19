@@ -67,7 +67,7 @@ public class ShareLocalFile implements ShareDataInterface {
         // place extras
         share.putExtra(Intent.EXTRA_STREAM, uri);
         share.putExtra(android.content.Intent.EXTRA_SUBJECT, (title == null ? "Subject for message" : title));
-        share.putExtra(android.content.Intent.EXTRA_TEXT, (detail == null ? "Body for message" : title));
+        share.putExtra(android.content.Intent.EXTRA_TEXT, (detail == null ? "Body for message" : detail));
         // return intent for launching
         return share;
     }

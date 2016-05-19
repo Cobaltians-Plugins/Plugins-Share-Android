@@ -54,6 +54,7 @@ public class ShareRemoteFile implements ShareDataInterface {
         this.mType = data.get(Tokens.JS_TOKEN_TYPE).toString();
         this.mRawUrl = data.get(Tokens.JS_TOKEN_PATH).toString();
         this.mFileName = URLUtil.guessFileName(this.mRawUrl, null, null); // parse url finding name
+        this.mPath = SharePlugin.pathFileStorage + mFileName;
         try {
             this.mUrl = new URL(this.mRawUrl);
         } catch (MalformedURLException e) {
@@ -68,7 +69,7 @@ public class ShareRemoteFile implements ShareDataInterface {
             this.mDetail = data.get(Tokens.JS_TOKEN_DETAIL).toString();
         }
 
-        File file = new File(SharePlugin.pathFileStorage + mFileName);
+        File file = new File(mPath);
         if (file.exists()) { // no need to download a new one
             SharePlugin.doShare(returnShareIntent());
         } else {
@@ -114,7 +115,7 @@ public class ShareRemoteFile implements ShareDataInterface {
         stringBuilder.append(" from ").append(applicationName).append("...");
         if (mTitle == null) mTitle = stringBuilder.toString();
         // check if file exist
-	if (FileSystemTools.stringIsBlank(mPath)) return null;
+	    if (FileSystemTools.stringIsBlank(mPath)) return null;
         File file = new File(mPath);
         if(!file.exists()) {
             Log.e(TAG, "Error when writing file at " + mPath);
@@ -181,7 +182,6 @@ public class ShareRemoteFile implements ShareDataInterface {
                     return null;
                 }
                 // init stream to be copied
-                mPath = SharePlugin.pathFileStorage + mFileName;
                 InputStream input = new BufferedInputStream(mUrl.openStream());
                 OutputStream output = new FileOutputStream(mPath);
                 // write file
