@@ -62,19 +62,21 @@ public class ParsingShareData {
                 return data;
             /**
              * Return share data for a contact
-             * mandatory params: type, name, mobile
-             * optional params: email, company, postal, job, detail
+             * No mandatory params but need a least one tokens
+             * params: type, name, mobile, email, company, postal, job, detail
              */
             case Tokens.JS_TOKEN_CONTACT_TYPE:
-                // mandatory data:
-                putInData(Tokens.JS_TOKEN_CONTACT_NAME, true);
-                putInData(Tokens.JS_TOKEN_CONTACT_MOBILE, true);
-                // others data:
-                putInData(Tokens.JS_TOKEN_CONTACT_EMAIL);
-                putInData(Tokens.JS_TOKEN_CONTACT_COMPANY);
-                putInData(Tokens.JS_TOKEN_CONTACT_POSTAL);
-                putInData(Tokens.JS_TOKEN_CONTACT_JOB);
-                putInData(Tokens.JS_TOKEN_DETAIL);
+                boolean tokenExist = putInData(Tokens.JS_TOKEN_CONTACT_NAME);
+                tokenExist = tokenExist || putInData(Tokens.JS_TOKEN_CONTACT_MOBILE);
+                tokenExist = tokenExist || putInData(Tokens.JS_TOKEN_CONTACT_EMAIL);
+                tokenExist = tokenExist || putInData(Tokens.JS_TOKEN_CONTACT_COMPANY);
+                tokenExist = tokenExist || putInData(Tokens.JS_TOKEN_CONTACT_POSTAL);
+                tokenExist = tokenExist || putInData(Tokens.JS_TOKEN_CONTACT_JOB);
+                tokenExist = tokenExist || putInData(Tokens.JS_TOKEN_DETAIL);
+                if (!tokenExist) {
+                    Log.e(TAG, "No params found for sharing contact: need a least one token.");
+                    return null;
+                }
                 if (Cobalt.DEBUG)
                     Log.d(TAG, Tokens.JS_TOKEN_CONTACT_TYPE + " Json parsed: " + data.toString());
                 return data;
@@ -113,14 +115,15 @@ public class ParsingShareData {
      * Set item 'token' in file data
      * @param token a immutable string to localise value in JSON object
      */
-    private void putInData(String token) {
-        if (!shareData.has(token)) return;
+    private boolean putInData(String token) {
+        if (!shareData.has(token)) return false;
         try {
             data.put(token, shareData.getString(token));
         } catch (JSONException e) {
             Log.e(TAG, "Error while parsing data from web.");
             e.printStackTrace();
         }
+        return true;
     }
 
     /**

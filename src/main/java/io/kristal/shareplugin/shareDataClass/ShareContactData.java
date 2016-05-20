@@ -20,19 +20,17 @@ public class ShareContactData implements ShareDataInterface {
     private String company = null;
     private String postal = null;
     private String job = null;
-    private String detail = null;
-    // TODO: 4/28/16 image and note for contact
+    private String detail = null; // or 'Notes'
+    // TODO: 4/28/16 image for contact
 
     /**
      * ShareContactData constructor
      * @param data - Map data of the people
      */
     public ShareContactData(Map data) {
-        // mandatory data
-        this.name = data.get(Tokens.JS_TOKEN_CONTACT_NAME).toString();
-        this.mobile = data.get(Tokens.JS_TOKEN_CONTACT_MOBILE).toString();
-
-        // optional data
+        // optional data, but at least one exist
+        if (data.containsKey(Tokens.JS_TOKEN_CONTACT_NAME)) this.name = data.get(Tokens.JS_TOKEN_CONTACT_NAME).toString();
+        if (data.containsKey(Tokens.JS_TOKEN_CONTACT_MOBILE)) this.mobile = data.get(Tokens.JS_TOKEN_CONTACT_MOBILE).toString();
         if (data.containsKey(Tokens.JS_TOKEN_CONTACT_EMAIL)) this.email = data.get(Tokens.JS_TOKEN_CONTACT_EMAIL).toString();
         if (data.containsKey(Tokens.JS_TOKEN_CONTACT_COMPANY)) this.company = data.get(Tokens.JS_TOKEN_CONTACT_COMPANY).toString();
         if (data.containsKey(Tokens.JS_TOKEN_CONTACT_POSTAL)) this.postal = data.get(Tokens.JS_TOKEN_CONTACT_POSTAL).toString();
@@ -47,10 +45,9 @@ public class ShareContactData implements ShareDataInterface {
         Intent intent = new Intent(Intent.ACTION_INSERT);
         // Sets the MIME type
         intent.setType(ContactsContract.Contacts.CONTENT_TYPE);
-        // mandatory data
+        // store data in intent
         intent.putExtra(ContactsContract.Intents.Insert.NAME, this.name);
         intent.putExtra(ContactsContract.Intents.Insert.PHONE, this.mobile);
-        // others data
         intent.putExtra(ContactsContract.Intents.Insert.EMAIL, this.email);
         intent.putExtra(ContactsContract.Intents.Insert.COMPANY, this.company);
         intent.putExtra(ContactsContract.Intents.Insert.POSTAL, this.postal);
