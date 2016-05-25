@@ -7,6 +7,6 @@
         <provider android:name="io.kristal.shareplugin.dataProvider.ShareContentProvider"
                   android:authorities="io.kristal.shareplugin.SharePlugin"
                   android:grantUriPermissions="true"
-                  android:exported="true" />/>
+                  android:exported="true" />
     </application>
 </manifest>

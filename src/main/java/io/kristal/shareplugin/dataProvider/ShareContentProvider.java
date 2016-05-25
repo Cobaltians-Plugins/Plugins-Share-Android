@@ -25,6 +25,7 @@ import io.kristal.shareplugin.SharePlugin;
  * Created by Roxane P. on 4/28/16.
  * ShareContentProvider
  * A basic content provider to read files from assets
+ * TODO: content provider authority must be unique to device... How to use shareplugins in multiple app ?
  */
 public class ShareContentProvider extends ContentProvider {
 

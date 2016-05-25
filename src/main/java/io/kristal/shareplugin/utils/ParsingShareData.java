@@ -22,10 +22,9 @@ public class ParsingShareData {
     // Data store all the key-value for the file in data
     private Map<String, String> data = new HashMap<String, String>();
     private JSONObject shareData;
-    private JSONObject message;
 
-    public ParsingShareData(JSONObject message) {
-        this.message = message;
+    public ParsingShareData(JSONObject shareData) {
+        this.shareData = shareData;
     }
 
     /**
@@ -35,10 +34,6 @@ public class ParsingShareData {
      * @throws JSONException if the given JSON message is malformed.
      */
     public Map<String, String> returnDataFromWeb() throws JSONException {
-        // Extract data in JSONObject from JSONArray
-        JSONArray messageJSONArray = message.getJSONArray(Tokens.JS_TOKEN_FILE_DATA);
-        shareData = messageJSONArray.getJSONObject(0);
-
         // Type is a mandatory value
         if (!shareData.has(Tokens.JS_TOKEN_TYPE)) return null;
         String typeFile = shareData.getString(Tokens.JS_TOKEN_TYPE);
