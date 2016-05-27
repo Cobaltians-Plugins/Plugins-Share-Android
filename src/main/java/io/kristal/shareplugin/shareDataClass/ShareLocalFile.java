@@ -58,7 +58,7 @@ public class ShareLocalFile implements ShareDataInterface {
         Uri uri;
         Intent share = new Intent(Intent.ACTION_SEND);
         // file comes from assets
-        uri = Uri.parse(SharePlugin.SCHEME + SharePlugin.AUTHORITY + "/" + path);
+        uri = Uri.parse(SharePlugin.SCHEME + SharePlugin.providerAuthority + "/" + path);
         if (Cobalt.DEBUG) {
             Log.d(TAG, "Uri to file " + uri.toString());
         }

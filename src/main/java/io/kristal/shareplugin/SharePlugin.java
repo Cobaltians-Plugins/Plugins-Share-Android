@@ -74,7 +74,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
     public static String pathFileStorage;
 
     // Content provider path
-    public static final String AUTHORITY = "io.kristal.shareplugin.SharePlugin";
+    public static String providerAuthority;
     public static final String SCHEME = "content://";
 
     /**************************************************************************************
@@ -100,6 +100,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
         mWebContainer = webContainer;
         currentFragment = webContainer.getFragment();
         currentContext = currentFragment.getContext();
+        providerAuthority = currentContext.getPackageName() + ".SharePlugin";
         // Create or set the path of the storage directory in the phone
         pathFileStorage = Environment.getExternalStorageDirectory().getAbsolutePath() +
                 "/Android/data/" +
@@ -112,8 +113,6 @@ public class SharePlugin extends CobaltAbstractPlugin {
         try {
             String action = message.getString(Cobalt.kJSAction);
             if (action.equals(SHARE_ME_APP)) {
-                // setting up share
-                CobaltFragment fragment = webContainer.getFragment();
                 // parse JSON, put into an hashMap
                 ParsingShareData psd = new ParsingShareData(message.getJSONObject(Tokens.JS_TOKEN_DATA_TYPE));
                 Map data = psd.returnDataFromWeb();
@@ -159,7 +158,7 @@ public class SharePlugin extends CobaltAbstractPlugin {
                 JSONObject callback = new JSONObject();
                 callback.put("cobalt.share", "Share action complete.");
                 // send callback
-                fragment.sendCallback(message.getString(Cobalt.kJSCallback), callback);
+                webContainer.getFragment().sendCallback(message.getString(Cobalt.kJSCallback), callback);
             } else if (Cobalt.DEBUG)
                 Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
         } catch (JSONException exception) {

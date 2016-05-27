@@ -85,7 +85,7 @@ public class ShareContentProvider extends ContentProvider {
     @Override
     public AssetFileDescriptor openAssetFile(@NonNull final Uri uri, @NonNull final String mode) throws FileNotFoundException {
         // we need to determinate absolute path in assets so file.pdf and Directory/file.pdf both work
-        String token = SharePlugin.AUTHORITY + "/";
+        String token = SharePlugin.providerAuthority + "/";
         String fileUri = uri.toString();
         // search for token which is the contentProvider name
         int indexOfToken = fileUri.indexOf(token);
