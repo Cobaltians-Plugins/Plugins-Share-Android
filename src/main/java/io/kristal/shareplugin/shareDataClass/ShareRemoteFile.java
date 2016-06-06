@@ -3,6 +3,8 @@ package io.kristal.shareplugin.shareDataClass;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.PowerManager;
@@ -72,12 +74,16 @@ public class ShareRemoteFile implements ShareDataInterface {
         File file = new File(mPath);
         if (file.exists()) { // no need to download a new one
             SharePlugin.doShare(returnShareIntent());
-        } else {
+        } else if (isNetworkAvailable()) {
             SharePlugin.currentFragment.getActivity().runOnUiThread(new Runnable() {
                 public void run() {
                     new DownloadFileAsync().execute(mRawUrl);
                 }
             });
+        } else {
+            String debug = "Can't download attachment for sharing " + mFileName + " : No internet connection available.";
+            Toast.makeText(SharePlugin.currentFragment.getContext(), debug, Toast.LENGTH_LONG).show();
+            Log.e(TAG, debug);
         }
     }
 
@@ -226,5 +232,15 @@ public class ShareRemoteFile implements ShareDataInterface {
             // finally, launch share
             SharePlugin.doShare(returnShareIntent());
         }
+    }
+
+    /**
+     * Check if there is an available internet connection
+     */
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) SharePlugin.currentContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 }
