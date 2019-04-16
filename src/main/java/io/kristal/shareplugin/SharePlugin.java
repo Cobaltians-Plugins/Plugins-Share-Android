@@ -154,11 +154,6 @@ public class SharePlugin extends CobaltAbstractPlugin {
                             break;
                     }
                 }
-                // send callback
-                JSONObject callback = new JSONObject();
-                callback.put("cobalt.share", "Share action complete.");
-                // send callback
-                webContainer.getFragment().sendCallback(message.getString(Cobalt.kJSCallback), callback);
             } else if (Cobalt.DEBUG)
                 Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
         } catch (JSONException exception) {
