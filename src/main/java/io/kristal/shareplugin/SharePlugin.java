@@ -26,6 +26,8 @@ package io.kristal.shareplugin;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Environment;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import org.cobaltians.cobalt.Cobalt;
@@ -88,15 +90,21 @@ public class SharePlugin extends CobaltAbstractPlugin {
      * CONSTRUCTORS
      **************************************************************************************/
 
-    public static CobaltAbstractPlugin getInstance(CobaltPluginWebContainer webContainer) {
-        if (sInstance == null) sInstance = new SharePlugin();
-        sInstance.addWebContainer(webContainer);
+    public static CobaltAbstractPlugin getInstance()
+    {
+        if (sInstance == null)
+        {
+            sInstance = new SharePlugin();
+        }
         return sInstance;
     }
-
+    
     @Override
-    public void onMessage(CobaltPluginWebContainer webContainer, JSONObject message) {
-        if (Cobalt.DEBUG) Log.d(TAG, "onMessage called with message: " + message.toString());
+    public void onMessage(@NonNull CobaltPluginWebContainer webContainer, @NonNull String action,
+            @Nullable JSONObject data, @Nullable String callbackChannel)
+    {
+        //if (Cobalt.DEBUG) Log.d(TAG, "onMessage called with message: " + message.toString());
+        // TODO: check nullabillity
         mWebContainer = webContainer;
         currentFragment = webContainer.getFragment();
         currentContext = currentFragment.getContext();
@@ -110,62 +118,72 @@ public class SharePlugin extends CobaltAbstractPlugin {
             if (Cobalt.DEBUG) Log.e(TAG, "Can't create directory at " + pathFileStorage);
         }
         // will parse message, create and launching intent
-        try {
-            String action = message.getString(Cobalt.kJSAction);
-            if (action.equals(SHARE_ME_APP)) {
-                // parse JSON, put into an hashMap
-                ParsingShareData psd = new ParsingShareData(message.getJSONObject(Tokens.JS_TOKEN_DATA_TYPE));
-                Map data = psd.returnDataFromWeb();
-                if (data == null) {
+        if (action.equals(SHARE_ME_APP)) {
+            // parse JSON, put into an hashMap
+            if (data == null)
+            {
+                Log.e(TAG, "onMessage: missing data.");
+                return;
+            }
+            //Map data
+            ParsingShareData psd = new ParsingShareData(data);
+            Map parsedData;
+            try
+            {
+                parsedData = psd.returnDataFromWeb();
+                if (parsedData == null)
+                {
                     Log.e(TAG, "Fatal: Parsed data is null.");
                     return;
                 }
-                // mType is used for intent title
-                mType = data.get(Tokens.JS_TOKEN_TYPE).toString();
-                // web side return data file to get from a source
-                if (data.containsKey(Tokens.JS_TOKEN_SOURCE)) {
-                    String source = data.get(Tokens.JS_TOKEN_SOURCE).toString();
-                    // send intents for items with sources
-                    switch (source) {
-                        case Tokens.JS_TOKEN_LOCAL:
-                            doShare(new ShareLocalFile(data).returnShareIntent());
-                            break;
-                        case Tokens.JS_TOKEN_REMOTE:
-                            // intent called asynchronously
-                            new ShareRemoteFile(data);
-                            break;
-                        // case Tokens.JS_TOKEN_PHONE:
-                        // TODO: 5/10/16 file comes from internal (dd) or external (sdcard) phone storage
-                        // break;
-                        default:
-                            Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
-                            break;
-                    }
-                } else {
-                    switch (mType) {
-                        case Tokens.JS_TOKEN_CONTACT_TYPE:
-                            doShare(new ShareContactData(data).returnShareIntent());
-                            break;
-                        case Tokens.JS_TOKEN_TEXT_TYPE:
-                            doShare(new ShareSimpleShareData(data).returnShareIntent());
-                            break;
-                        default:
-                            Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
-                            break;
-                    }
-                }
-                // send callback
-                JSONObject callback = new JSONObject();
-                callback.put("cobalt.share", "Share action complete.");
-                // send callback
-                webContainer.getFragment().sendCallback(message.getString(Cobalt.kJSCallback), callback);
-            } else if (Cobalt.DEBUG)
-                Log.e(TAG, "onMessage: invalid action " + action + " in message " + message.toString() + ".");
-        } catch (JSONException exception) {
-            if (Cobalt.DEBUG) {
-                Log.d(TAG, "onMessage: missing action key in message " + message.toString() + ".");
-                exception.printStackTrace();
             }
+            catch(JSONException e)
+            {
+                Log.e(TAG, "Fatal: Parsed data is null.");
+                e.printStackTrace();
+                return;
+            }
+            // mType is used for intent title
+            mType = parsedData.get(Tokens.JS_TOKEN_TYPE).toString();
+            // web side return data file to get from a source
+            if (parsedData.containsKey(Tokens.JS_TOKEN_SOURCE)) {
+                String source = parsedData.get(Tokens.JS_TOKEN_SOURCE).toString();
+                // send intents for items with sources
+                switch (source) {
+                    case Tokens.JS_TOKEN_LOCAL:
+                        doShare(new ShareLocalFile(parsedData).returnShareIntent());
+                        break;
+                    case Tokens.JS_TOKEN_REMOTE:
+                        // intent called asynchronously
+                        new ShareRemoteFile(parsedData);
+                        break;
+                    // case Tokens.JS_TOKEN_PHONE:
+                    // TODO: 5/10/16 file comes from internal (dd) or external (sdcard) phone storage
+                    // break;
+                    default:
+                        Log.e(TAG, "onMessage: invalid source " + source
+                                   + ". Available sources are: local, url");
+                        break;
+                }
+            }
+            else {
+                switch (mType) {
+                    case Tokens.JS_TOKEN_CONTACT_TYPE:
+                        doShare(new ShareContactData(parsedData).returnShareIntent());
+                        break;
+                    case Tokens.JS_TOKEN_TEXT_TYPE:
+                        doShare(new ShareSimpleShareData(parsedData).returnShareIntent());
+                        break;
+                    default:
+                        Log.e(TAG, "onMessage: invalid type " + mType
+                                   + ". Available types are: contact, text");
+                        break;
+                }
+            }
+        }
+        else if (Cobalt.DEBUG)
+        {
+            Log.e(TAG, "onMessage: invalid action " + action);
         }
     }
 
